@@ -58,6 +58,8 @@ def main(config_path: str):
         cache_dir=data_raw,
     )
 
+    risk_cfg = config.get("risk", {})
+
     bt_cfg = BacktestConfig(
         start=config["data"]["start"],
         end=config["data"]["end"],
@@ -78,9 +80,12 @@ def main(config_path: str):
         solver=config["portfolio"].get("solver"),
         normalize=config["features"]["normalize"],
         winsorize_limits=tuple(config["features"]["winsorize_limits"]),
-        model_type=config["model"]["type"],
-        model_alpha=config["model"]["alpha"],
-        model_l1_ratio=config["model"]["l1_ratio"],
+        model_config=config["model"],
+        cov_method=risk_cfg.get("cov_method", "ledoit_wolf"),
+        vol_target=risk_cfg.get("vol_target"),
+        vol_lookback=risk_cfg.get("vol_lookback", 63),
+        min_leverage=risk_cfg.get("min_leverage", 0.5),
+        max_leverage=risk_cfg.get("max_leverage", 3.0),
     )
 
     results = run_backtest(price_data.prices, price_data.volumes, bt_cfg)
@@ -90,17 +95,31 @@ def main(config_path: str):
     daily_returns.to_csv(run_dir / "equity_curve.csv", index=True)
     holdings.to_csv(run_dir / "holdings.csv", index=True)
 
-    spy_returns = price_data.prices["SPY"].pct_change().dropna()
+    spy_returns = price_data.prices["SPY"].pct_change(fill_method=None).dropna()
     summary = summarize(daily_returns, results["turnovers"], holdings, market_returns=spy_returns)
     (run_dir / "performance_summary.json").write_text(json.dumps(summary, indent=2))
 
+    # Feature importance (LightGBM)
+    fi = results.get("feature_importances")
+    if fi is not None and not fi.empty:
+        fi.to_csv(run_dir / "feature_importances.csv", index=False)
+
+    # Leverage history (vol targeting)
+    lev = results.get("leverage_history")
+    if lev is not None and not lev.empty:
+        lev.to_csv(run_dir / "leverage_history.csv")
+
     generate_tear_sheet(daily_returns, run_dir)
 
-    # --- Factor IC analysis ---
+    # Factor IC analysis
     prices_slice = price_data.prices.loc[config["data"]["start"]:config["data"]["end"]]
-    factors = compute_factors(prices_slice, price_data.volumes.loc[prices_slice.index[0]:prices_slice.index[-1]])
+    vol_slice = price_data.volumes.loc[prices_slice.index[0]:prices_slice.index[-1]]
+    factors = compute_factors(prices_slice, vol_slice)
     ic_df, ic_summary = compute_factor_ic(factors, prices_slice)
     save_factor_ic(ic_df, ic_summary, run_dir)
+
+    # Save config snapshot for reproducibility
+    (run_dir / "config_snapshot.yaml").write_text(yaml.dump(config, default_flow_style=False))
 
     print(f"Run complete. Outputs in: {run_dir}")
 

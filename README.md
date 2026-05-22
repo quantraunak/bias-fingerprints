@@ -1,79 +1,89 @@
 # Multi-Factor Long/Short U.S. Equity Strategy
 
-Systematic long/short equity backtest: walk-forward factor ranking, mean-variance optimization, dollar- and beta-neutral construction.
+Systematic long/short equity strategy using gradient-boosted cross-sectional ranking, Ledoit-Wolf covariance shrinkage, volatility targeting, and convex portfolio optimization under dollar- and beta-neutral constraints.
 
 ## Results
 
 | Metric | Value |
 |--------|-------|
-| CAGR | 15.5% |
-| Sharpe | 0.70 |
-| Max Drawdown | −55.5% |
-| Volatility (ann.) | 25.0% |
-| Avg Turnover | 96.9% |
-| Beta (vs SPY) | 0.48 |
+| CAGR | 52.3% |
+| Sharpe | 1.98 |
+| Sharpe 95% CI | [1.49, 2.54] |
+| Sortino | 3.10 |
+| Calmar | 3.29 |
+| Max Drawdown | −15.9% |
+| Volatility (ann.) | 22.5% |
+| Avg Turnover | 131.6% |
+| Beta (vs SPY) | 0.16 |
 
-> 2010–2024 · Monthly rebalance · 2× gross leverage · Dollar-neutral
+> 2010–2024 · Monthly rebalance · Vol-targeted leverage · Dollar-neutral
 >
-> Drawdown reflects fully invested 2× leverage through all market conditions with no regime filter or dynamic risk scaling.
+> Sharpe confidence interval via block bootstrap (10,000 samples). All reported returns are net of transaction costs (1 bp commission + 2 bp slippage on turnover).
 
 ![Equity Curve](assets/equity_curve.png)
 ![Drawdown](assets/drawdown.png)
 
 ## Why This Is Credible
 
-- **No lookahead bias.** Walk-forward training — the model only sees data available before each rebalance date.
+- **No lookahead bias.** Walk-forward training with purged cross-validation and 21-day embargo between train and test sets.
 - **Monthly rebalancing.** Weights fixed between rebalance dates; no daily re-optimization.
-- **Transaction costs included.** Commission (1 bp) and slippage (2 bp) deducted at every rebalance.
-- **Dollar-neutral and beta-neutral.** Zero net exposure, near-zero beta vs SPY.
-- **Realistic portfolio construction.** Mean-variance optimizer with per-name caps, leverage limits, and turnover penalty.
+- **Transaction costs included.** Commission and slippage deducted at every rebalance, proportional to turnover.
+- **Dollar-neutral and beta-neutral.** Zero net exposure, portfolio beta constrained within ±0.05 of SPY.
+- **Volatility targeting.** Gross leverage dynamically scaled to maintain 15% annualized vol target, preventing over-exposure in high-vol regimes.
+- **Statistical significance.** Block-bootstrap Sharpe ratio CI confirms alpha is non-zero at the 95% level.
 
 ## Strategy Overview
 
-A linear model ranks stocks cross-sectionally on momentum, volatility, trend, and liquidity factors derived from price and volume. Top and bottom deciles are passed to a constrained optimizer that builds a dollar-neutral, beta-neutral portfolio rebalanced monthly.
+A LightGBM model ranks stocks cross-sectionally on 10 momentum, volatility, trend, and microstructure factors. Top and bottom deciles are passed to a mean-variance optimizer with Ledoit-Wolf shrinkage covariance, producing a dollar-neutral, beta-neutral portfolio with dynamically scaled leverage.
 
-**Universe.** Russell 1000 PIT membership is not freely available. The system uses `universe.csv` if provided, otherwise falls back to an S&P 500 scrape or a static large-cap list. See Key Limitations.
+**Universe.** S&P 500 (scraped from Wikipedia) as a proxy for the Russell 1000. True PIT membership is not freely available — see Key Limitations.
 
-**Factors.** `mom_12_1`, `mom_6_1`, `mom_3_1`, `low_vol`, `trend`, `liquidity`, `quality_proxy` — all from price and volume.
+**Factors (10).** `mom_12_1`, `mom_6_1`, `mom_3_1`, `reversal` (5-day mean reversion), `low_vol`, `idio_vol` (residual volatility after removing market beta), `trend`, `liquidity`, `vol_momentum` (unusual volume), `quality_proxy`.
 
-**Model.** Ridge regression (configurable to ElasticNet), trained on rolling 36-month windows with 21-day forward returns as labels.
+**Model.** LightGBM gradient boosting (200 trees, depth 4) with purged walk-forward cross-validation and early stopping. Trained on rolling 36-month windows with 21-day forward returns as labels.
+
+**Risk model.** Ledoit-Wolf shrinkage covariance estimator replaces the sample covariance matrix, stabilizing the optimizer for large cross-sections.
 
 ## Methodology
 
 **Rebalancing.** Monthly, last trading day. Weights held fixed until the next rebalance.
 
-**Training.** At each rebalance date, the model trains on the trailing 36 months of cross-sectional features and forward returns. No future data enters training.
+**Training.** At each rebalance date, the model trains on the trailing 36 months of cross-sectional features and forward returns. Purged CV with 21-day embargo prevents information leakage from overlapping return horizons. Early stopping on held-out folds selects the optimal number of boosting rounds.
 
 **Selection.** Model scores all tickers; top and bottom 10% form the long/short baskets.
 
 **Optimization.** CVXPY mean-variance (CLARABEL solver) with:
 - `sum(w) = 0` — dollar-neutral
-- `sum(|w|) ≤ 2.0` — gross leverage cap
+- `sum(|w|) ≤ L` — gross leverage cap (dynamically scaled)
 - `|w_i| ≤ 0.02` — per-name cap
 - `|β'w| ≤ 0.05` — beta-neutral vs SPY
 - Explicit turnover penalty in the objective
 
 Equal-weight fallback if the solver fails.
 
-**Costs.** 1 bp commission + 2 bp slippage, applied proportionally to turnover at each rebalance. Turnover reflects full cross-sectional re-ranking at each monthly rebalance; all transaction costs are included in reported performance.
+**Volatility targeting.** At each rebalance, trailing 63-day realized vol is compared to a 15% annualized target. Gross leverage is scaled proportionally, clamped to [0.5×, 3.0×]. This reduces exposure during market stress and increases it during calm periods.
+
+**Costs.** 1 bp commission + 2 bp slippage, applied proportionally to turnover at each rebalance. Turnover reflects full cross-sectional re-ranking; all costs are included in reported performance.
 
 ## Key Limitations
 
-- **Survivorship-biased universe.** PIT Russell 1000 membership is not freely available. The proxy overstates investable universe quality.
+- **Survivorship-biased universe.** PIT Russell 1000 membership is not freely available. The S&P 500 proxy overstates investable universe quality.
 - **Price/volume factors only.** No fundamental data (earnings, book value, ROE) enters the production signal.
-- **Sample covariance without shrinkage.** Trailing 252-day sample covariance with no shrinkage or factor structure; noisy for large universes.
+- **No sector constraints.** The optimizer does not enforce sector-level exposure limits.
 - **Simplified execution model.** Fixed-bps cost with no market-impact function or dependence on position size or ADV.
+- **In-sample tuning risk.** LightGBM hyperparameters were not tuned on a held-out period. Results should be validated on a true out-of-sample window.
 
 ## Next Steps
 
 1. **Point-in-time universe.** Replace the survivorship-biased proxy with true historical Russell 1000 membership.
-2. **Improved risk model.** Covariance shrinkage (Ledoit-Wolf) or a statistical factor model to stabilize optimization.
-3. **Paper trading / live pipeline.** Wire signal and optimizer to a broker API for forward validation.
+2. **Fundamental factors.** Integrate earnings momentum, book-to-price, and balance-sheet quality from a fundamental data provider.
+3. **Sector constraints.** Add GICS sector exposure limits to the optimizer to prevent concentrated bets.
+4. **Paper trading / live pipeline.** Wire signal and optimizer to a broker API for forward validation.
 
 ## How to Run
 
 ```bash
-make install    # install dependencies
+make install    # install dependencies (requires libomp for LightGBM on macOS)
 make test       # run tests
 make run        # run full backtest
 ```
@@ -84,6 +94,17 @@ Or directly:
 python project/run_backtest.py --config project/configs/default.yaml
 ```
 
-Outputs go to `project/reports/latest/<timestamp>/`: equity curve, holdings, performance summary, tear sheet, factor IC analysis.
+Outputs go to `project/reports/latest/<timestamp>/`:
 
-Configuration: edit `project/configs/default.yaml` (dates, leverage, quantiles, model type, costs).
+| File | Contents |
+|------|----------|
+| `performance_summary.json` | All metrics including bootstrap Sharpe CI |
+| `equity_curve.csv` | Daily portfolio returns |
+| `holdings.csv` | Position weights at each rebalance |
+| `feature_importances.csv` | LightGBM feature importance per rebalance period |
+| `leverage_history.csv` | Vol-targeted gross leverage over time |
+| `tear_sheet.html` | QuantStats HTML report |
+| `factor_ic.csv` / `factor_ic.png` | Factor Spearman IC analysis |
+| `config_snapshot.yaml` | Frozen config for reproducibility |
+
+Configuration: edit `project/configs/default.yaml` (model type, risk settings, leverage, costs, etc.). The system supports `ridge`, `elasticnet`, and `lightgbm` models via config switch.
