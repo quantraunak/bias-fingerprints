@@ -6,19 +6,21 @@ Systematic long/short equity strategy using gradient-boosted cross-sectional ran
 
 | Metric | Value |
 |--------|-------|
-| CAGR | 52.3% |
-| Sharpe | 1.98 |
-| Sharpe 95% CI | [1.49, 2.54] |
-| Sortino | 3.10 |
-| Calmar | 3.29 |
-| Max Drawdown | −15.9% |
-| Volatility (ann.) | 22.5% |
-| Avg Turnover | 131.6% |
-| Beta (vs SPY) | 0.16 |
+| CAGR | 35.3% |
+| Sharpe | 1.46 |
+| Sharpe 95% CI | [0.90, 2.07] |
+| Sortino | 2.35 |
+| Calmar | 1.43 |
+| Max Drawdown | −24.7% |
+| Volatility (ann.) | 22.4% |
+| Avg Turnover | 120.7% |
+| Beta (vs SPY) | 0.14 |
 
-> 2010–2024 · Monthly rebalance · Vol-targeted leverage · Dollar-neutral
+> 2010–2024 · Monthly rebalance · Vol targeting + drawdown governor · Dollar-neutral
 >
-> Sharpe confidence interval via block bootstrap (10,000 samples). All reported returns are net of transaction costs (1 bp commission + 2 bp slippage on turnover).
+> Sharpe CI via block bootstrap (10,000 samples). Returns net of 1 bp commission + 5 bp slippage on turnover.
+>
+> Drawdown chart is monthly underwater (% from peak). Max drawdown reflects fully invested exposure through all regimes with no regime filter.
 
 ![Equity Curve](assets/equity_curve.png)
 ![Drawdown](assets/drawdown.png)
@@ -29,7 +31,7 @@ Systematic long/short equity strategy using gradient-boosted cross-sectional ran
 - **Monthly rebalancing.** Weights fixed between rebalance dates; no daily re-optimization.
 - **Transaction costs included.** Commission and slippage deducted at every rebalance, proportional to turnover.
 - **Dollar-neutral and beta-neutral.** Zero net exposure, portfolio beta constrained within ±0.05 of SPY.
-- **Volatility targeting.** Gross leverage dynamically scaled to maintain 15% annualized vol target, preventing over-exposure in high-vol regimes.
+- **Volatility targeting + drawdown governor.** EWMA vol scaling (12% target) and automatic de-grossing when underwater >8% from peak.
 - **Statistical significance.** Block-bootstrap Sharpe ratio CI confirms alpha is non-zero at the 95% level.
 
 ## Strategy Overview
@@ -61,9 +63,11 @@ A LightGBM model ranks stocks cross-sectionally on 10 momentum, volatility, tren
 
 Equal-weight fallback if the solver fails.
 
-**Volatility targeting.** At each rebalance, trailing 63-day realized vol is compared to a 15% annualized target. Gross leverage is scaled proportionally, clamped to [0.5×, 3.0×]. This reduces exposure during market stress and increases it during calm periods.
+**Volatility targeting.** EWMA realized vol (126-day span) vs 12% annual target; gross leverage scaled and capped at 2.0×.
 
-**Costs.** 1 bp commission + 2 bp slippage, applied proportionally to turnover at each rebalance. Turnover reflects full cross-sectional re-ranking; all costs are included in reported performance.
+**Drawdown governor.** When portfolio drawdown exceeds 8% from peak, leverage is scaled down (floor 35% of target) until recovery.
+
+**Costs.** 1 bp commission + 5 bp slippage on turnover (stress-test level given ~120% monthly turnover). All costs in reported performance.
 
 ## Key Limitations
 

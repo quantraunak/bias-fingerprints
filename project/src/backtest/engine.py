@@ -14,7 +14,7 @@ from src.models.model_factory import build_ranker
 from src.portfolio.constraints import PortfolioConstraints
 from src.portfolio.costs import turnover_cost
 from src.portfolio.optimizer import OptimizerConfig, optimize_weights
-from src.portfolio.risk_model import compute_vol_scaled_leverage, shrink_covariance
+from src.portfolio.risk_model import compute_effective_leverage, shrink_covariance
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +47,12 @@ class BacktestConfig:
     # Vol targeting (None to disable)
     vol_target: float | None = None
     vol_lookback: int = 63
+    vol_ewma_span: int | None = 126
     min_leverage: float = 0.5
-    max_leverage: float = 3.0
+    max_leverage: float = 2.0
+    # Drawdown governor (None to disable)
+    dd_threshold: float | None = 0.08
+    dd_min_scale: float = 0.35
 
 
 def _estimate_betas(returns: pd.DataFrame, market: pd.Series) -> pd.Series:
@@ -156,17 +160,17 @@ def run_backtest(prices: pd.DataFrame, volumes: pd.DataFrame, config: BacktestCo
         asset_returns = returns[sel_tickers].loc[:dt].iloc[-config.beta_window:]
         betas = _estimate_betas(asset_returns, market)
 
-        # Vol targeting: dynamically scale leverage
-        effective_leverage = config.gross_leverage
-        if config.vol_target is not None and not cumulative_returns.empty:
-            effective_leverage = compute_vol_scaled_leverage(
-                cumulative_returns,
-                config.gross_leverage,
-                config.vol_target,
-                lookback=config.vol_lookback,
-                min_leverage=config.min_leverage,
-                max_leverage=config.max_leverage,
-            )
+        effective_leverage = compute_effective_leverage(
+            cumulative_returns,
+            base_leverage=config.gross_leverage,
+            target_vol=config.vol_target,
+            vol_lookback=config.vol_lookback,
+            min_leverage=config.min_leverage,
+            max_leverage=config.max_leverage,
+            ewma_span=config.vol_ewma_span,
+            dd_threshold=config.dd_threshold,
+            dd_min_scale=config.dd_min_scale,
+        )
         leverage_history.append((dt, effective_leverage))
 
         constraints = PortfolioConstraints(

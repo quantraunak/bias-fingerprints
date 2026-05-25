@@ -84,8 +84,11 @@ def main(config_path: str):
         cov_method=risk_cfg.get("cov_method", "ledoit_wolf"),
         vol_target=risk_cfg.get("vol_target"),
         vol_lookback=risk_cfg.get("vol_lookback", 63),
+        vol_ewma_span=risk_cfg.get("vol_ewma_span"),
         min_leverage=risk_cfg.get("min_leverage", 0.5),
-        max_leverage=risk_cfg.get("max_leverage", 3.0),
+        max_leverage=risk_cfg.get("max_leverage", 2.0),
+        dd_threshold=risk_cfg.get("dd_threshold"),
+        dd_min_scale=risk_cfg.get("dd_min_scale", 0.35),
     )
 
     results = run_backtest(price_data.prices, price_data.volumes, bt_cfg)
@@ -109,7 +112,7 @@ def main(config_path: str):
     if lev is not None and not lev.empty:
         lev.to_csv(run_dir / "leverage_history.csv")
 
-    generate_tear_sheet(daily_returns, run_dir)
+    generate_tear_sheet(daily_returns, run_dir, benchmark=spy_returns)
 
     # Factor IC analysis
     prices_slice = price_data.prices.loc[config["data"]["start"]:config["data"]["end"]]

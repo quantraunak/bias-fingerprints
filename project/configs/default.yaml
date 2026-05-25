@@ -24,38 +24,41 @@ model:
   min_train_samples: 2000
   lightgbm:
     n_estimators: 200
-    max_depth: 4
-    learning_rate: 0.05
-    subsample: 0.8
-    colsample_bytree: 0.8
-    min_child_samples: 50
-    reg_alpha: 0.1
-    reg_lambda: 1.0
+    max_depth: 3
+    learning_rate: 0.04
+    subsample: 0.75
+    colsample_bytree: 0.75
+    min_child_samples: 80
+    reg_alpha: 0.2
+    reg_lambda: 2.0
     n_cv_splits: 3
     embargo_days: 21
 
 backtest:
-  rebalance_freq: "M"
+  rebalance_freq: "ME"
   train_lookback_months: 36
 
 portfolio:
   long_short_quantile: 0.10
-  gross_leverage: 2.0
+  gross_leverage: 1.8
   max_weight: 0.02
   beta_tolerance: 0.05
   beta_window: 252
   cov_window: 252
-  risk_aversion: 5.0
-  turnover_penalty: 0.1
+  risk_aversion: 6.0
+  turnover_penalty: 0.25
   solver: "CLARABEL"
 
 risk:
   cov_method: "ledoit_wolf"
-  vol_target: 0.15
-  vol_lookback: 63
-  min_leverage: 0.5
-  max_leverage: 3.0
+  vol_target: 0.12
+  vol_lookback: 126
+  vol_ewma_span: 126
+  min_leverage: 0.4
+  max_leverage: 2.0
+  dd_threshold: 0.08
+  dd_min_scale: 0.35
 
 costs:
   commission_bps: 1.0
-  slippage_bps: 2.0
+  slippage_bps: 5.0
