@@ -32,35 +32,17 @@ def _short_term_reversal(prices: pd.DataFrame) -> pd.DataFrame:
     return -(price_now / price_5d - 1.0)
 
 
-def _idiosyncratic_vol(returns: pd.DataFrame, market_returns: pd.Series) -> pd.DataFrame:
-    """Rolling 60-day residual vol after removing market beta.
-
-    Lower idio vol is a stronger signal (defensive tilt), so we negate.
-    """
-    window = 60
-    idio_vol = pd.DataFrame(index=returns.index, columns=returns.columns, dtype=float)
-
-    for start in range(0, len(returns) - window + 1):
-        end = start + window
-        chunk = returns.iloc[start:end]
-        mkt = market_returns.iloc[start:end]
-        date = returns.index[end - 1]
-
-        mkt_clean = mkt.dropna()
-        mkt_var = mkt_clean.var()
-        if mkt_var == 0 or np.isnan(mkt_var):
-            continue
-
-        for col in returns.columns:
-            s = chunk[col].dropna()
-            common = s.index.intersection(mkt_clean.index)
-            if len(common) < window // 2:
-                continue
-            beta = s.loc[common].cov(mkt_clean.loc[common]) / mkt_var
-            resid = s.loc[common] - beta * mkt_clean.loc[common]
-            idio_vol.loc[date, col] = resid.std()
-
-    return -idio_vol.astype(float)
+def _idiosyncratic_vol(returns: pd.DataFrame, market_returns: pd.Series, window: int = 60) -> pd.DataFrame:
+    """Rolling residual vol after removing market beta (vectorized)."""
+    minp = window // 2
+    mkt = market_returns.reindex(returns.index)
+    mkt_var = mkt.rolling(window, min_periods=minp).var()
+    std_r = returns.rolling(window, min_periods=minp).std()
+    std_m = mkt.rolling(window, min_periods=minp).std()
+    cov = returns.rolling(window, min_periods=minp).corr(mkt).mul(std_r, axis=0).mul(std_m, axis=0)
+    beta = cov.div(mkt_var.replace(0, np.nan), axis=0)
+    resid = returns - beta.mul(mkt, axis=0)
+    return -resid.rolling(window, min_periods=minp).std()
 
 
 def _volume_momentum(volumes: pd.DataFrame) -> pd.DataFrame:

@@ -129,6 +129,8 @@ def save_performance_charts(
     output_dir: Path,
     benchmark_returns: pd.Series | None = None,
 ) -> dict[str, float]:
+    daily_returns = daily_returns.copy()
+    daily_returns.index = pd.to_datetime(daily_returns.index)
     output_dir.mkdir(parents=True, exist_ok=True)
     plot_equity_curve(daily_returns, output_dir / "equity_curve.png", benchmark_returns)
     meta = plot_drawdown(daily_returns, output_dir / "drawdown.png")

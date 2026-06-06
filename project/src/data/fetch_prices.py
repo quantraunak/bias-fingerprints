@@ -1,139 +1,39 @@
-"""Robust price downloader with per-ticker isolation, stooq/yfinance fallback,
-exponential-backoff retries, parquet caching, and a manifest log."""
-
 from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Iterable
 
-import numpy as np
 import pandas as pd
 
+from src.data.types import FetchResult
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
+_VALID_SOURCES = frozenset({"yfinance", "stooq"})
 
-@dataclass
+
+@dataclass(frozen=True)
 class FetchConfig:
-    source: str = "auto"            # "stooq" | "yfinance" | "auto"
-    start: str = "2010-01-01"
-    end: str = "2024-12-31"
+    source: str
+    start: str
+    end: str
     force_refresh: bool = False
     min_history_days: int = 252
-    min_tickers: int = 20
+    min_tickers: int = 80
+    min_success_ratio: float = 0.75
     retries: int = 3
 
 
-# ---------------------------------------------------------------------------
-# Output
-# ---------------------------------------------------------------------------
-
-@dataclass
+@dataclass(frozen=True)
 class PriceData:
-    prices: pd.DataFrame   # index: date, columns: ticker (adj close)
-    volumes: pd.DataFrame  # index: date, columns: ticker
+    prices: pd.DataFrame
+    volumes: pd.DataFrame
+    fetch_result: FetchResult
 
 
-# ---------------------------------------------------------------------------
-# Stooq helpers
-# ---------------------------------------------------------------------------
-
-_STOOQ_TICKER_VARIANTS = {}  # runtime cache: canonical ticker -> working stooq sym
-
-
-def _stooq_variants(ticker: str) -> List[str]:
-    """Return candidate Stooq symbols for a US equity ticker."""
-    base = ticker.upper()
-    candidates = [f"{base}.US"]
-    # BRK-B  ->  BRK.B.US  (Stooq convention for share classes)
-    if "-" in base:
-        candidates.append(f"{base.replace('-', '.')}.US")
-    return candidates
-
-
-def _download_stooq_single(
-    ticker: str, start: str, end: str, retries: int
-) -> Optional[pd.DataFrame]:
-    from pandas_datareader import data as pdr
-
-    # If we already know the working symbol, try that first
-    variants = _stooq_variants(ticker)
-    if ticker in _STOOQ_TICKER_VARIANTS:
-        variants = [_STOOQ_TICKER_VARIANTS[ticker]] + [
-            v for v in variants if v != _STOOQ_TICKER_VARIANTS[ticker]
-        ]
-
-    last_err: Optional[Exception] = None
-    for sym in variants:
-        for attempt in range(retries):
-            try:
-                df = pdr.DataReader(sym, "stooq", start, end)
-                if df is not None and not df.empty:
-                    df = df.sort_index()
-                    df = df.rename(columns={
-                        "Close": "adj_close",
-                        "Volume": "volume",
-                    })
-                    df = df[["adj_close", "volume"]].copy()
-                    df.index.name = "date"
-                    _STOOQ_TICKER_VARIANTS[ticker] = sym
-                    return df
-            except Exception as exc:
-                last_err = exc
-                time.sleep(0.5 * (2 ** attempt))
-    return None
-
-
-# ---------------------------------------------------------------------------
-# yfinance helpers
-# ---------------------------------------------------------------------------
-
-def _download_yfinance_single(
-    ticker: str, start: str, end: str, retries: int
-) -> Optional[pd.DataFrame]:
-    try:
-        import yfinance as yf
-    except ImportError:
-        return None
-
-    for attempt in range(retries):
-        try:
-            df = yf.download(
-                ticker,
-                start=start,
-                end=end,
-                auto_adjust=True,
-                progress=False,
-                threads=False,
-            )
-            if df is not None and not df.empty:
-                # yfinance may return MultiIndex columns for single ticker
-                if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = df.columns.get_level_values(0)
-                df = df.rename(columns={"Close": "adj_close", "Volume": "volume"})
-                if "adj_close" not in df.columns and "Adj Close" in df.columns:
-                    df = df.rename(columns={"Adj Close": "adj_close"})
-                cols = [c for c in ["adj_close", "volume"] if c in df.columns]
-                if "adj_close" not in cols:
-                    return None
-                df = df[cols].copy()
-                df.index.name = "date"
-                return df
-        except Exception:
-            time.sleep(0.5 * (2 ** attempt))
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Per-ticker cache
-# ---------------------------------------------------------------------------
-
-def _ticker_cache_path(cache_dir: Path, ticker: str) -> Path:
+def _cache_path(cache_dir: Path, ticker: str) -> Path:
     return cache_dir / "prices" / f"{ticker}.parquet"
 
 
@@ -142,127 +42,191 @@ def _manifest_path(cache_dir: Path) -> Path:
 
 
 def _load_manifest(cache_dir: Path) -> dict:
-    mp = _manifest_path(cache_dir)
-    if mp.exists():
-        return json.loads(mp.read_text())
-    return {}
+    p = _manifest_path(cache_dir)
+    return json.loads(p.read_text()) if p.exists() else {}
 
 
-def _save_manifest(cache_dir: Path, manifest: dict):
-    mp = _manifest_path(cache_dir)
-    mp.parent.mkdir(parents=True, exist_ok=True)
-    mp.write_text(json.dumps(manifest, indent=2))
+def _save_manifest(cache_dir: Path, manifest: dict) -> None:
+    p = _manifest_path(cache_dir)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(manifest, indent=2, sort_keys=True))
 
 
-# ---------------------------------------------------------------------------
-# Main entry point
-# ---------------------------------------------------------------------------
-
-def get_price_data(
-    tickers: Iterable[str],
-    cfg: FetchConfig,
-    cache_dir: Path,
-) -> PriceData:
-    """Download / load cached prices for *tickers*.  Returns PriceData with
-    adj-close and volume wide DataFrames."""
-
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    prices_dir = cache_dir / "prices"
-    prices_dir.mkdir(parents=True, exist_ok=True)
-
-    tickers = sorted(set(t.upper().strip() for t in tickers if t))
+def _assert_cache_source(cache_dir: Path, cfg: FetchConfig) -> None:
     manifest = _load_manifest(cache_dir)
+    if not manifest or cfg.force_refresh:
+        return
+    sources = {meta.get("source") for meta in manifest.values() if meta.get("source")}
+    if sources and sources != {cfg.source}:
+        raise RuntimeError(
+            f"Price cache sources {sorted(sources)} do not match data.price_source={cfg.source!r}. "
+            "Set data.force_refresh: true or delete project/data/raw/prices/."
+        )
 
-    succeeded: list[str] = []
-    failed: dict[str, str] = {}
-    frames: dict[str, pd.DataFrame] = {}
+
+def _load_cached(path: Path) -> pd.DataFrame:
+    df = pd.read_parquet(path)
+    if df.empty:
+        raise ValueError("empty cache file")
+    return df
+
+
+def _download_yfinance_batch(tickers: list[str], start: str, end: str) -> dict[str, pd.DataFrame]:
+    import yfinance as yf
+
+    raw = yf.download(
+        tickers,
+        start=start,
+        end=end,
+        auto_adjust=True,
+        group_by="ticker",
+        threads=True,
+        progress=False,
+    )
+    out: dict[str, pd.DataFrame] = {}
+    if len(tickers) == 1:
+        t = tickers[0]
+        frame = pd.DataFrame({"adj_close": raw["Close"], "volume": raw.get("Volume", 0.0)})
+        frame.index = pd.to_datetime(frame.index)
+        frame.index.name = "date"
+        return {t: frame.dropna(subset=["adj_close"])}
 
     for t in tickers:
-        # --- try cache first ---
-        cp = _ticker_cache_path(cache_dir, t)
-        if cp.exists() and not cfg.force_refresh:
+        if t not in raw.columns.get_level_values(0):
+            continue
+        sub = raw[t]
+        frame = pd.DataFrame({"adj_close": sub["Close"], "volume": sub.get("Volume", 0.0)})
+        frame.index = pd.to_datetime(frame.index)
+        frame.index.name = "date"
+        if not frame.empty:
+            out[t] = frame.dropna(subset=["adj_close"])
+    return out
+
+
+def _download_stooq(ticker: str, start: str, end: str, retries: int) -> pd.DataFrame:
+    from pandas_datareader import data as pdr
+
+    symbols = [f"{ticker}.US"]
+    if "-" in ticker:
+        symbols.append(f"{ticker.replace('-', '.')}.US")
+
+    last_err: Exception | None = None
+    for sym in symbols:
+        for attempt in range(retries):
             try:
-                df = pd.read_parquet(cp)
-                if not df.empty:
-                    frames[t] = df
-                    succeeded.append(t)
+                raw = pdr.DataReader(sym, "stooq", start, end).sort_index()
+                if raw is None or raw.empty:
                     continue
-            except Exception:
-                pass  # re-download
+                out = pd.DataFrame(
+                    {"adj_close": raw["Close"], "volume": raw.get("Volume", 0.0)},
+                    index=pd.to_datetime(raw.index),
+                )
+                out.index.name = "date"
+                return out.dropna(subset=["adj_close"])
+            except Exception as exc:
+                last_err = exc
+                time.sleep(0.5 * (2**attempt))
+    raise RuntimeError(f"stooq failed for {ticker}: {last_err}") from last_err
 
-        # --- download ---
-        df: Optional[pd.DataFrame] = None
-        source_used: Optional[str] = None
 
-        if cfg.source in ("stooq", "auto"):
-            df = _download_stooq_single(t, cfg.start, cfg.end, cfg.retries)
-            if df is not None:
-                source_used = "stooq"
+def get_price_data(tickers: Iterable[str], cfg: FetchConfig, cache_dir: Path) -> PriceData:
+    if cfg.source not in _VALID_SOURCES:
+        raise ValueError(f"data.price_source must be one of {sorted(_VALID_SOURCES)}, got {cfg.source!r}")
 
-        if df is None and cfg.source in ("yfinance", "auto"):
-            df = _download_yfinance_single(t, cfg.start, cfg.end, cfg.retries)
-            if df is not None:
-                source_used = "yfinance"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    (cache_dir / "prices").mkdir(parents=True, exist_ok=True)
+    tickers = sorted({t.upper().strip() for t in tickers if t})
 
-        if df is not None and not df.empty:
-            df.to_parquet(cp)
-            manifest[t] = {
-                "source": source_used,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-            frames[t] = df
-            succeeded.append(t)
-        else:
-            failed[t] = "empty or no data from any source"
+    _assert_cache_source(cache_dir, cfg)
+    manifest = _load_manifest(cache_dir)
+    frames: dict[str, pd.DataFrame] = {}
+    failed: dict[str, str] = {}
+    to_fetch: list[str] = []
+
+    for ticker in tickers:
+        path = _cache_path(cache_dir, ticker)
+        use_cache = (
+            path.exists()
+            and not cfg.force_refresh
+            and manifest.get(ticker, {}).get("source") == cfg.source
+        )
+        if use_cache:
+            frames[ticker] = _load_cached(path)
+            continue
+        to_fetch.append(ticker)
+
+    if to_fetch and cfg.source == "yfinance":
+        for i in range(0, len(to_fetch), 50):
+            batch = to_fetch[i : i + 50]
+            batch_frames = _download_yfinance_batch(batch, cfg.start, cfg.end)
+            for t, df in batch_frames.items():
+                df.to_parquet(_cache_path(cache_dir, t))
+                manifest[t] = {
+                    "source": cfg.source,
+                    "start": cfg.start,
+                    "end": cfg.end,
+                    "rows": int(len(df)),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+                frames[t] = df
+            for t in batch:
+                if t not in batch_frames:
+                    failed[t] = "no data returned"
+
+    elif to_fetch:
+        for ticker in to_fetch:
+            try:
+                df = _download_stooq(ticker, cfg.start, cfg.end, cfg.retries)
+                df.to_parquet(_cache_path(cache_dir, ticker))
+                manifest[ticker] = {
+                    "source": cfg.source,
+                    "start": cfg.start,
+                    "end": cfg.end,
+                    "rows": int(len(df)),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+                frames[ticker] = df
+            except Exception as exc:
+                failed[ticker] = str(exc)
 
     _save_manifest(cache_dir, manifest)
 
-    # --- assemble wide frames ---
-    price_parts = []
-    volume_parts = []
-    for t, df in frames.items():
-        df.index = pd.to_datetime(df.index)
-        if "adj_close" in df.columns:
-            price_parts.append(df["adj_close"].rename(t))
-        if "volume" in df.columns:
-            volume_parts.append(df["volume"].rename(t))
+    if not frames:
+        raise RuntimeError("No price data loaded.")
 
-    if price_parts:
-        prices = pd.concat(price_parts, axis=1).sort_index()
-    else:
-        prices = pd.DataFrame()
+    prices = pd.concat([f["adj_close"].rename(t) for t, f in frames.items()], axis=1).sort_index()
+    volumes = pd.concat([f["volume"].rename(t) for t, f in frames.items()], axis=1).sort_index()
 
-    if volume_parts:
-        volumes = pd.concat(volume_parts, axis=1).sort_index()
-    else:
-        volumes = pd.DataFrame()
+    counts = prices.count()
+    short = counts[counts < cfg.min_history_days].index.tolist()
+    if short:
+        prices = prices.drop(columns=short)
+        volumes = volumes.drop(columns=[c for c in short if c in volumes.columns])
 
-    # --- filter insufficient history ---
-    dropped_history: list[str] = []
-    if not prices.empty:
-        counts = prices.count()
-        short = counts[counts < cfg.min_history_days].index.tolist()
-        if short:
-            prices = prices.drop(columns=short)
-            volumes = volumes.drop(columns=[c for c in short if c in volumes.columns])
-            dropped_history = short
+    n_loaded = prices.shape[1]
+    n_requested = len(tickers)
+    ratio = n_loaded / n_requested if n_requested else 0.0
 
-    # --- summary log ---
-    print(f"[fetch_prices] attempted={len(tickers)}  succeeded={len(succeeded)}  "
-          f"failed={len(failed)}  dropped_short_history={len(dropped_history)}")
-    if failed:
-        shown = list(failed.items())[:10]
-        for t, msg in shown:
-            print(f"  FAIL {t}: {msg}")
-        if len(failed) > 10:
-            print(f"  ... and {len(failed) - 10} more failures")
-
-    # --- final checks ---
-    remaining = prices.shape[1] if not prices.empty else 0
-    if remaining < cfg.min_tickers:
+    if n_loaded < cfg.min_tickers:
         raise RuntimeError(
-            f"Only {remaining} tickers survived (min_tickers={cfg.min_tickers}). "
-            f"Check network or universe list."
+            f"Only {n_loaded}/{n_requested} tickers passed filters (min_tickers={cfg.min_tickers}). "
+            f"Failed={len(failed)}, dropped_short_history={len(short)}."
+        )
+    if ratio < cfg.min_success_ratio:
+        raise RuntimeError(
+            f"Success ratio {ratio:.1%} below min_success_ratio={cfg.min_success_ratio:.0%}. "
+            f"price_source={cfg.source}, failed={len(failed)}."
         )
 
-    return PriceData(prices=prices, volumes=volumes)
+    return PriceData(
+        prices=prices,
+        volumes=volumes,
+        fetch_result=FetchResult(
+            n_requested=n_requested,
+            n_loaded=n_loaded,
+            n_failed=len(failed),
+            n_dropped_short_history=len(short),
+            price_source=cfg.source,
+            failed_tickers=failed,
+        ),
+    )

@@ -14,19 +14,13 @@ def generate_tear_sheet(
 ):
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    try:
-        import quantstats as qs
+    import quantstats as qs
 
-        qs.reports.html(
-            returns,
-            benchmark=benchmark,
-            output=str(output_dir / "tear_sheet.html"),
-            title="Multi-Factor Long/Short Tear Sheet",
-        )
-    except Exception:
-        html_path = output_dir / "tear_sheet.html"
-        html_path.write_text(
-            "<html><body><h1>Tear Sheet</h1><p>Quantstats not available.</p></body></html>"
-        )
+    qs.reports.html(
+        returns,
+        benchmark=benchmark,
+        output=str(output_dir / "tear_sheet.html"),
+        title="Multi-Factor Long/Short Tear Sheet",
+    )
 
     save_performance_charts(returns, output_dir, benchmark_returns=benchmark)

@@ -103,11 +103,59 @@ def bootstrap_sharpe_ci(
             float(np.percentile(sharpes, 100 * (1 - alpha))))
 
 
+def cost_stress_sharpe(
+    gross_returns: pd.Series,
+    rebalance_costs: list[dict],
+    commission_bps: float,
+    slippage_scenarios_bps: list[float],
+) -> dict[str, float]:
+    """Recompute Sharpe under alternative slippage assumptions (same turnover)."""
+    out = {}
+    if gross_returns.empty or not rebalance_costs:
+        return out
+
+    for slip_bps in slippage_scenarios_bps:
+        net = gross_returns.copy()
+        for event in rebalance_costs:
+            dt = pd.Timestamp(event["date"])
+            cost = event["turnover"] * (commission_bps + slip_bps) / 10_000.0
+            idx = net.index[net.index >= dt]
+            if not idx.empty:
+                net.loc[idx[0]] -= cost
+        out[f"sharpe_slippage_{int(slip_bps)}bps"] = round(sharpe(net), 4)
+    return out
+
+
+def alpha_vs_market(returns: pd.Series, market_returns: pd.Series) -> dict[str, float]:
+    aligned = pd.concat([returns, market_returns], axis=1, join="inner").dropna()
+    if len(aligned) < 30:
+        return {"alpha_ann": 0.0, "beta": 0.0, "r_squared": 0.0}
+    y = aligned.iloc[:, 0].values
+    x = aligned.iloc[:, 1].values
+    x_ = np.column_stack([np.ones(len(x)), x])
+    coef, _, _, _ = np.linalg.lstsq(x_, y, rcond=None)
+    alpha_daily, beta_hat = coef[0], coef[1]
+    fitted = x_ @ coef
+    ss_res = ((y - fitted) ** 2).sum()
+    ss_tot = ((y - y.mean()) ** 2).sum()
+    r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0.0
+    return {
+        "alpha_ann": float(alpha_daily * 252),
+        "beta": float(beta_hat),
+        "r_squared": float(r2),
+    }
+
+
 def summarize(
     returns: pd.Series,
     turnovers: list[float],
     holdings: pd.DataFrame,
     market_returns: pd.Series | None = None,
+    gross_returns: pd.Series | None = None,
+    rebalance_costs: list[dict] | None = None,
+    commission_bps: float = 1.0,
+    base_slippage_bps: float = 5.0,
+    cost_stress_bps: list[float] | None = None,
 ) -> dict:
     sr_lo, sr_hi = bootstrap_sharpe_ci(returns)
 
@@ -127,4 +175,13 @@ def summarize(
         "beta_vs_spy": beta(returns, market_returns) if market_returns is not None else None,
         "n_days": len(returns),
     }
+
+    if market_returns is not None:
+        result["market_regression"] = alpha_vs_market(returns, market_returns)
+
+    if gross_returns is not None and rebalance_costs and cost_stress_bps:
+        result["cost_stress"] = cost_stress_sharpe(
+            gross_returns, rebalance_costs, commission_bps, cost_stress_bps
+        )
+
     return result

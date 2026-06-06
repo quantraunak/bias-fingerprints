@@ -1,26 +1,34 @@
+# Data contract — see docs/DATA.md
 data:
-  source: "auto"
+  price_source: stooq             # yfinance | stooq (single source, no silent fallback)
   start: "2010-01-01"
   end: "2024-12-31"
   force_refresh: false
   min_history_days: 252
-  min_tickers: 20
+  min_tickers: 45
+  min_success_ratio: 0.90
+  max_missing_pct: 0.05
   retries: 3
 
 universe:
-  fallback: "sp500"
+  source: file_snapshot           # file_snapshot | file_pit | sp500_wikipedia_snapshot
+  path: data/raw/universe.csv
+  benchmark: SPY
+  sector_source: yfinance
 
 features:
   winsorize_limits: [0.01, 0.99]
-  normalize: "zscore"
+  normalize: zscore
+  sector_neutral: true
 
 labels:
   horizon_days: 21
 
+research:
+  oos_start: "2017-01-01"         # performance metrics use returns from this date only
+
 model:
-  type: "lightgbm"
-  alpha: 1.0
-  l1_ratio: 0.5
+  type: lightgbm
   min_train_samples: 2000
   lightgbm:
     n_estimators: 200
@@ -35,7 +43,7 @@ model:
     embargo_days: 21
 
 backtest:
-  rebalance_freq: "ME"
+  rebalance_freq: ME
   train_lookback_months: 36
 
 portfolio:
@@ -47,10 +55,10 @@ portfolio:
   cov_window: 252
   risk_aversion: 6.0
   turnover_penalty: 0.25
-  solver: "CLARABEL"
+  solver: CLARABEL
 
 risk:
-  cov_method: "ledoit_wolf"
+  cov_method: ledoit_wolf
   vol_target: 0.12
   vol_lookback: 126
   vol_ewma_span: 126
@@ -62,3 +70,4 @@ risk:
 costs:
   commission_bps: 1.0
   slippage_bps: 5.0
+  stress_slippage_bps: [5, 10, 20]
