@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Factor Long/Short Equity Strategy</title>
+<style>
+  :root {
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --border:         rgba(11,11,11,0.10);
+    --series-blue:    #2a78d6;
+    --series-red:     #e34948;
+    --good:           #006300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --border:         rgba(255,255,255,0.10);
+      --series-blue:    #3987e5;
+      --series-red:     #e66767;
+      --good:           #0ca30c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px 20px 80px;
+  }
+  header { margin-bottom: 36px; }
+  .eyebrow {
+    color: var(--text-muted);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 8px;
+  }
+  h1 {
+    font-size: 28px;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+  }
+  .lede {
+    color: var(--text-secondary);
+    font-size: 16px;
+    max-width: 640px;
+    margin: 0 0 18px;
+  }
+  .links a {
+    color: var(--series-blue);
+    text-decoration: none;
+    font-size: 14px;
+    margin-right: 18px;
+  }
+  .links a:hover { text-decoration: underline; }
+  .caption {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 6px 0 0;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--gridline);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 28px 0 36px;
+  }
+  .stat-tile {
+    background: var(--surface-1);
+    padding: 16px 18px;
+  }
+  .stat-label {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 6px;
+  }
+  .stat-value {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .stat-value.good { color: var(--good); }
+  .stat-sub {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  section { margin: 40px 0; }
+  h2 {
+    font-size: 18px;
+    margin: 0 0 14px;
+  }
+  .chart-card {
+    background: #fcfcfb;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  .chart-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 4px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--gridline);
+  }
+  th {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .factor-name { font-weight: 500; }
+
+  .ic-bar-cell { min-width: 160px; }
+  .ic-bar {
+    position: relative;
+    height: 14px;
+    background: var(--gridline);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .ic-bar .mid {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--text-muted);
+  }
+  .ic-bar .fill {
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    border-radius: 2px;
+  }
+  .ic-bar .fill.pos { left: 50%; background: var(--series-blue); }
+  .ic-bar .fill.neg { right: 50%; background: var(--series-red); }
+
+  .imp-row { display: flex; align-items: center; gap: 10px; margin: 7px 0; }
+  .imp-name { width: 110px; font-size: 13px; color: var(--text-secondary); flex-shrink: 0; }
+  .imp-track { flex: 1; background: var(--gridline); border-radius: 3px; height: 12px; }
+  .imp-fill { background: var(--series-blue); height: 100%; border-radius: 3px; }
+  .imp-value { width: 36px; text-align: right; font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  ul.limits { color: var(--text-secondary); font-size: 14px; padding-left: 20px; }
+  ul.limits li { margin-bottom: 6px; }
+
+  footer {
+    border-top: 1px solid var(--gridline);
+    margin-top: 48px;
+    padding-top: 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  footer a { color: var(--series-blue); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Systematic Equity Research</p>
+    <h1>Multi-Factor Long/Short U.S. Equity Strategy</h1>
+    <p class="lede">
+      Gradient-boosted cross-sectional ranking, Ledoit-Wolf covariance shrinkage,
+      volatility targeting, and convex portfolio optimization under dollar- and
+      beta-neutral constraints. Backtested 2010&ndash;2024 with walk-forward
+      training, purged cross-validation, and transaction costs included.
+    </p>
+    <div class="links">
+      <a href="https://github.com/quantraunak/ls-multifactor-research">GitHub repo</a>
+      <a href="tear_sheet.html">Full tear sheet</a>
+      <a href="https://github.com/quantraunak/ls-multifactor-research#readme">Methodology &amp; limitations</a>
+    </div>
+  </header>
+
+  <section>
+    <div class="stat-grid">
+      <div class="stat-tile">
+        <p class="stat-label">CAGR</p>
+        <p class="stat-value good">35.3%</p>
+      </div>
+      <div class="stat-tile">
+        <p class="stat-label">Sharpe</p>
+        <p class="stat-value">1.46</p>
+        <p class="stat-sub">95% CI [0.90, 2.07]</p>
+      </div>
+      <div class="stat-tile">
+        <p class="stat-label">Sortino</p>
+        <p class="stat-value">2.35</p>
+      </div>
+      <div class="stat-tile">
+        <p class="stat-label">Calmar</p>
+        <p class="stat-value">1.43</p>
+      </div>
+      <div class="stat-tile">
+        <p class="stat-label">Max Drawdown</p>
+        <p class="stat-value">&minus;24.7%</p>
+      </div>
+      <div class="stat-tile">
+        <p class="stat-label">Volatility (ann.)</p>
+        <p class="stat-value">22.4%</p>
+      </div>
+      <div class="stat-tile">
+        <p class="stat-label">Beta vs SPY</p>
+        <p class="stat-value">0.14</p>
+      </div>
+      <div class="stat-tile">
+        <p class="stat-label">Avg Turnover</p>
+        <p class="stat-value">120.7%</p>
+        <p class="stat-sub">monthly</p>
+      </div>
+    </div>
+    <p class="caption">2010&ndash;2024 &middot; monthly rebalance &middot; vol targeting + drawdown governor &middot; dollar-neutral. Sharpe CI via block bootstrap (10,000 samples). Returns net of 1 bp commission + 5 bp slippage on turnover.</p>
+  </section>
+
+  <section>
+    <h2>Equity curve &amp; drawdown</h2>
+    <div class="chart-card">
+      <img src="assets/equity_curve.png" alt="Cumulative equity curve, 2010 to 2024">
+    </div>
+    <div class="chart-card">
+      <img src="assets/drawdown.png" alt="Monthly underwater drawdown chart">
+    </div>
+    <p class="caption">Drawdown chart is monthly underwater (% from peak). Max drawdown reflects fully invested exposure through all regimes with no regime filter.</p>
+  </section>
+
+  <section>
+    <h2>Factor information coefficient</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Factor</th>
+          <th class="num">Mean IC</th>
+          <th class="ic-bar-cell"></th>
+          <th class="num">IC IR</th>
+          <th class="num">% Positive Days</th>
+        </tr>
+      </thead>
+      <tbody id="ic-table-body"></tbody>
+    </table>
+    <p class="caption">Rank IC of each factor vs. 21-day forward returns, full sample. Blue = positive mean IC, red = negative. Bar width scaled to the largest-magnitude factor (reversal).</p>
+  </section>
+
+  <section>
+    <h2>Model feature importance (avg. across rebalances)</h2>
+    <div id="importance-chart"></div>
+    <p class="caption">Average LightGBM split importance per factor, across all monthly retrain windows.</p>
+  </section>
+
+  <section>
+    <h2>Why this is credible</h2>
+    <ul class="limits">
+      <li><strong>No lookahead bias</strong> &mdash; walk-forward training with purged cross-validation and a 21-day embargo between train and test sets.</li>
+      <li><strong>Transaction costs included</strong> &mdash; commission and slippage deducted at every rebalance, proportional to turnover.</li>
+      <li><strong>Dollar- and beta-neutral</strong> &mdash; zero net exposure, portfolio beta constrained within &plusmn;0.05 of SPY.</li>
+      <li><strong>Statistical significance</strong> &mdash; block-bootstrap Sharpe ratio CI confirms alpha is non-zero at the 95% level.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Key limitations</h2>
+    <ul class="limits">
+      <li><strong>Survivorship-biased universe</strong> &mdash; true point-in-time Russell 1000 membership isn't freely available; the S&amp;P 500 proxy overstates investable universe quality.</li>
+      <li><strong>Price/volume factors only</strong> &mdash; no fundamental data (earnings, book value, ROE) in the production signal.</li>
+      <li><strong>No sector constraints</strong> &mdash; the optimizer doesn't enforce sector-level exposure limits.</li>
+      <li><strong>Simplified execution model</strong> &mdash; fixed-bps cost with no market-impact function.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Full methodology, code, and reproduction instructions: <a href="https://github.com/quantraunak/ls-multifactor-research">github.com/quantraunak/ls-multifactor-research</a>
+  </footer>
+
+</div>
+
+<script>
+  const factors = [
+    { name: "reversal", label: "Reversal (5d)", ic: 0.01577, ir: 0.0660, pos: 0.5231 },
+    { name: "quality_proxy", label: "Quality proxy", ic: 0.00926, ir: 0.0351, pos: 0.5246 },
+    { name: "mom_12_1", label: "Momentum 12-1", ic: 0.01030, ir: 0.0381, pos: 0.5229 },
+    { name: "mom_6_1", label: "Momentum 6-1", ic: 0.00796, ir: 0.0317, pos: 0.5176 },
+    { name: "trend", label: "Trend", ic: 0.00303, ir: 0.0111, pos: 0.5090 },
+    { name: "mom_3_1", label: "Momentum 3-1", ic: 0.00179, ir: 0.0076, pos: 0.5129 },
+    { name: "idio_vol", label: "Idio. volatility", ic: -0.00209, ir: -0.0091, pos: 0.4954 },
+    { name: "liquidity", label: "Liquidity", ic: -0.00589, ir: -0.0281, pos: 0.4864 },
+    { name: "low_vol", label: "Low volatility", ic: -0.00571, ir: -0.0184, pos: 0.4803 },
+    { name: "vol_momentum", label: "Volume shock", ic: -0.00914, ir: -0.0549, pos: 0.4747 },
+  ];
+  const maxAbsIc = Math.max(...factors.map(f => Math.abs(f.ic)));
+  const tbody = document.getElementById("ic-table-body");
+  factors.forEach(f => {
+    const pct = (Math.abs(f.ic) / maxAbsIc * 50).toFixed(1);
+    const cls = f.ic >= 0 ? "pos" : "neg";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="factor-name">${f.label}</td>
+      <td class="num">${f.ic >= 0 ? "+" : ""}${(f.ic * 100).toFixed(2)}%</td>
+      <td class="ic-bar-cell"><div class="ic-bar"><div class="mid"></div><div class="fill ${cls}" style="width:${pct}%"></div></div></td>
+      <td class="num">${f.ir.toFixed(3)}</td>
+      <td class="num">${(f.pos * 100).toFixed(1)}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const importances = [
+    { name: "Low volatility", value: 31.40 },
+    { name: "Liquidity", value: 23.62 },
+    { name: "Idio. volatility", value: 17.06 },
+    { name: "Trend", value: 10.73 },
+    { name: "Quality proxy", value: 11.46 },
+    { name: "Momentum 12-1", value: 11.44 },
+    { name: "Momentum 6-1", value: 9.27 },
+    { name: "Volume shock", value: 8.48 },
+    { name: "Momentum 3-1", value: 4.30 },
+    { name: "Reversal (5d)", value: 0.77 },
+  ].sort((a, b) => b.value - a.value);
+  const maxImp = Math.max(...importances.map(i => i.value));
+  const impRoot = document.getElementById("importance-chart");
+  importances.forEach(i => {
+    const row = document.createElement("div");
+    row.className = "imp-row";
+    row.innerHTML = `
+      <div class="imp-name">${i.name}</div>
+      <div class="imp-track"><div class="imp-fill" style="width:${(i.value / maxImp * 100).toFixed(1)}%"></div></div>
+      <div class="imp-value">${i.value.toFixed(1)}</div>
+    `;
+    impRoot.appendChild(row);
+  });
+</script>
+</body>
+</html>
