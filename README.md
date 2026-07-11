@@ -1,5 +1,7 @@
 # Multi-Factor Long/Short U.S. Equity Strategy
 
+**[Results dashboard](https://quantraunak.github.io/ls-multifactor-research/)** · **[Full tear sheet](https://quantraunak.github.io/ls-multifactor-research/tear_sheet.html)**
+
 Systematic long/short equity strategy using gradient-boosted cross-sectional ranking, Ledoit-Wolf covariance shrinkage, volatility targeting, and convex portfolio optimization under dollar- and beta-neutral constraints.
 
 ## Results
