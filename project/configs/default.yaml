@@ -1,18 +1,18 @@
 # Data contract — see docs/DATA.md
 data:
-  price_source: stooq             # yfinance | stooq (single source, no silent fallback)
+  price_source: yfinance          # stooq endpoints went dead Aug 2026; yfinance is the working source
   start: "2010-01-01"
   end: "2024-12-31"
   force_refresh: false
   min_history_days: 252
-  min_tickers: 45
+  min_tickers: 300                # a real cross-section, not a handful of names
   min_success_ratio: 0.90
   max_missing_pct: 0.05
   retries: 3
 
 universe:
   source: file_snapshot           # file_snapshot | file_pit | sp500_wikipedia_snapshot
-  path: data/raw/universe.csv
+  path: data/raw/universe_sp500.csv   # full 503-name universe: a decile is 50 names, not 4
   benchmark: SPY
   sector_source: yfinance
 
@@ -25,7 +25,7 @@ labels:
   horizon_days: 21
 
 research:
-  oos_start: "2017-01-01"         # performance metrics use returns from this date only
+  oos_start: "2017-01-01"         # reported metrics use PnL from this date onward
 
 model:
   type: lightgbm
@@ -49,7 +49,7 @@ backtest:
 portfolio:
   long_short_quantile: 0.10
   gross_leverage: 1.8
-  max_weight: 0.02
+  max_weight: 0.05                # must exceed equal-weight (gross/n) or the box is infeasible
   beta_tolerance: 0.05
   beta_window: 252
   cov_window: 252

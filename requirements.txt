@@ -5,7 +5,7 @@ scipy==1.13.1
 scikit-learn==1.5.2
 cvxpy==1.5.3
 lightgbm>=4.0.0
-yfinance==0.2.40
+yfinance>=1.5.2
 pandas-datareader==0.10.0
 matplotlib==3.9.2
 quantstats==0.0.62

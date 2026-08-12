@@ -29,6 +29,13 @@ def validate_price_panel(
     missing_pct = prices.isna().mean()
     bad = missing_pct[missing_pct > max_missing_pct].index.tolist()
     if bad:
+        import warnings
+
+        warnings.warn(
+            f"Dropping {len(bad)} tickers with >{max_missing_pct:.0%} missing bars: {bad[:10]}"
+            + ("..." if len(bad) > 10 else ""),
+            stacklevel=2,
+        )
         prices = prices.drop(columns=bad)
         volumes = volumes.reindex(columns=prices.columns)
 

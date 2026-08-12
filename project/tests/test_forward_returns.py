@@ -1,6 +1,7 @@
 import pandas as pd
+import pytest
 
-from src.labels.forward_returns import compute_forward_returns
+from src.labels.forward_returns import compute_forward_returns, last_label_date
 
 
 def test_forward_returns_alignment():
@@ -12,3 +13,12 @@ def test_forward_returns_alignment():
     assert abs(fwd.loc["2020-01-02", "AAA"] - 0.10) < 1e-9
     assert pd.isna(fwd.loc["2020-01-03", "AAA"])
 
+
+def test_last_label_date_purges_peeking_labels():
+    idx = pd.bdate_range("2020-01-01", periods=30)
+    dt = idx[25]
+    label_end = last_label_date(idx, dt, horizon_days=5)
+    assert label_end == idx[20]
+    assert label_end + pd.offsets.BDay(5) == dt
+
+    assert last_label_date(idx, idx[3], horizon_days=5) is None

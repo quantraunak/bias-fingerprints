@@ -71,6 +71,7 @@ def main(config_path: str):
     risk_cfg = config.get("risk", {})
     costs_cfg = config.get("costs", {})
     research_cfg = config.get("research", {})
+    bench = config["universe"].get("benchmark", "SPY")
 
     bt_cfg = BacktestConfig(
         start=config["data"]["start"],
@@ -94,6 +95,7 @@ def main(config_path: str):
         normalize=config["features"]["normalize"],
         winsorize_limits=tuple(config["features"]["winsorize_limits"]),
         sector_neutral=config["features"].get("sector_neutral", True),
+        benchmark=bench,
         model_config=config["model"],
         cov_method=risk_cfg.get("cov_method", "ledoit_wolf"),
         vol_target=risk_cfg.get("vol_target"),
@@ -110,13 +112,13 @@ def main(config_path: str):
         market["volumes"],
         bt_cfg,
         sector_map=market["sectors"],
+        membership=market["universe"].membership,
     )
 
     daily_returns = results["daily_returns"]
     daily_returns.to_csv(run_dir / "equity_curve.csv", index=True)
     results["holdings"].to_csv(run_dir / "holdings.csv", index=True)
 
-    bench = config["universe"].get("benchmark", "SPY")
     spy_returns = market["prices"][bench].pct_change(fill_method=None).dropna()
     spy_returns = spy_returns.reindex(daily_returns.index).fillna(0.0)
 
@@ -134,6 +136,10 @@ def main(config_path: str):
     summary["oos_start"] = research_cfg.get("oos_start")
     (run_dir / "performance_summary.json").write_text(json.dumps(summary, indent=2))
 
+    skipped = results.get("skipped_rebalances", [])
+    if skipped:
+        (run_dir / "skipped_rebalances.json").write_text(json.dumps(skipped, indent=2, default=str))
+
     fi = results.get("feature_importances")
     if fi is not None and not fi.empty:
         fi.to_csv(run_dir / "feature_importances.csv", index=False)
@@ -142,11 +148,15 @@ def main(config_path: str):
     if lev is not None and not lev.empty:
         lev.to_csv(run_dir / "leverage_history.csv")
 
-    generate_tear_sheet(daily_returns, run_dir, benchmark=spy_returns)
+    generate_tear_sheet(daily_returns, run_dir, benchmark=spy_returns, benchmark_label=bench)
 
     prices_slice = market["prices"].loc[config["data"]["start"] : config["data"]["end"]]
     vol_slice = market["volumes"].loc[prices_slice.index[0] : prices_slice.index[-1]]
-    ic_df, ic_summary = compute_factor_ic(compute_factors(prices_slice, vol_slice), prices_slice)
+    ic_df, ic_summary = compute_factor_ic(
+        compute_factors(prices_slice, vol_slice, benchmark=bench),
+        prices_slice,
+        horizon_days=config["labels"]["horizon_days"],
+    )
     save_factor_ic(ic_df, ic_summary, run_dir)
 
     (run_dir / "config_snapshot.yaml").write_text(yaml.dump(config, default_flow_style=False))

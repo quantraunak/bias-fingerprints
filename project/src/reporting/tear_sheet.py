@@ -11,6 +11,7 @@ def generate_tear_sheet(
     returns: pd.Series,
     output_dir: Path,
     benchmark: pd.Series | None = None,
+    benchmark_label: str = "Benchmark",
 ):
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -23,4 +24,6 @@ def generate_tear_sheet(
         title="Multi-Factor Long/Short Tear Sheet",
     )
 
-    save_performance_charts(returns, output_dir, benchmark_returns=benchmark)
+    save_performance_charts(
+        returns, output_dir, benchmark_returns=benchmark, benchmark_label=benchmark_label
+    )

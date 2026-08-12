@@ -52,7 +52,11 @@ def _volume_momentum(volumes: pd.DataFrame) -> pd.DataFrame:
     return (short_avg / long_avg.replace(0, np.nan)) - 1.0
 
 
-def compute_factors(prices: pd.DataFrame, volumes: pd.DataFrame) -> dict[str, pd.DataFrame]:
+def compute_factors(
+    prices: pd.DataFrame,
+    volumes: pd.DataFrame,
+    benchmark: str = "SPY",
+) -> dict[str, pd.DataFrame]:
     prices = prices.sort_index()
     returns = prices.pct_change(fill_method=None)
 
@@ -64,8 +68,10 @@ def compute_factors(prices: pd.DataFrame, volumes: pd.DataFrame) -> dict[str, pd
 
     low_vol = -returns.rolling(252).std()
 
-    market_ret = returns.get("SPY", returns.mean(axis=1))
-    idio_vol = _idiosyncratic_vol(returns, market_ret)
+    bench = benchmark.upper()
+    if bench not in returns.columns:
+        raise ValueError(f"Benchmark {bench} missing from returns panel.")
+    idio_vol = _idiosyncratic_vol(returns, returns[bench])
 
     trend = prices / prices.rolling(200).mean() - 1.0
 

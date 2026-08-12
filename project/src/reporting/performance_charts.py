@@ -39,6 +39,7 @@ def plot_equity_curve(
     daily_returns: pd.Series,
     output_path: Path,
     benchmark_returns: pd.Series | None = None,
+    benchmark_label: str = "Benchmark",
 ) -> None:
     """Growth-of-$1 equity curve on log scale."""
     plt.rcParams.update(_STYLE)
@@ -56,7 +57,7 @@ def plot_equity_curve(
             color="#9AA5B1",
             linewidth=1.0,
             linestyle="--",
-            label="SPY",
+            label=benchmark_label,
         )
 
     ax.set_yscale("log")
@@ -128,10 +129,13 @@ def save_performance_charts(
     daily_returns: pd.Series,
     output_dir: Path,
     benchmark_returns: pd.Series | None = None,
+    benchmark_label: str = "Benchmark",
 ) -> dict[str, float]:
     daily_returns = daily_returns.copy()
     daily_returns.index = pd.to_datetime(daily_returns.index)
     output_dir.mkdir(parents=True, exist_ok=True)
-    plot_equity_curve(daily_returns, output_dir / "equity_curve.png", benchmark_returns)
+    plot_equity_curve(
+        daily_returns, output_dir / "equity_curve.png", benchmark_returns, benchmark_label
+    )
     meta = plot_drawdown(daily_returns, output_dir / "drawdown.png")
     return meta

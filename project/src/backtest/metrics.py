@@ -176,6 +176,12 @@ def summarize(
         "n_days": len(returns),
     }
 
+    if rebalance_costs:
+        if "portfolio_beta" in rebalance_costs[0]:
+            result["avg_portfolio_beta"] = float(np.mean([e["portfolio_beta"] for e in rebalance_costs]))
+        if "n_names" in rebalance_costs[0]:
+            result["avg_names_per_rebalance"] = float(np.mean([e["n_names"] for e in rebalance_costs]))
+
     if market_returns is not None:
         result["market_regression"] = alpha_vs_market(returns, market_returns)
 

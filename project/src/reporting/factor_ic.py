@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from src.labels.forward_returns import compute_forward_returns
+
 
 def _spearman_ic_series(
     factor: pd.DataFrame,
@@ -54,25 +56,14 @@ def _spearman_ic_series(
 def compute_factor_ic(
     factors: dict[str, pd.DataFrame],
     prices: pd.DataFrame,
+    horizon_days: int = 21,
 ) -> tuple[pd.DataFrame, dict]:
-    """Compute daily Spearman IC for every factor vs next-day returns.
-
-    Parameters
-    ----------
-    factors : dict mapping factor name -> wide DataFrame (date × ticker)
-    prices  : wide DataFrame of adjusted close prices
-
-    Returns
-    -------
-    ic_df      : DataFrame with columns = factor names, index = date
-    ic_summary : dict with per-factor summary statistics
-    """
-    # Next-day forward returns (shift -1 in the index, i.e. return from t to t+1)
-    fwd_1d = prices.pct_change().shift(-1)
+    """Spearman IC vs h-day forward returns (same horizon as model labels)."""
+    fwd = compute_forward_returns(prices, horizon_days)
 
     ic_series: dict[str, pd.Series] = {}
     for name, fdf in factors.items():
-        ic_series[name] = _spearman_ic_series(fdf, fwd_1d)
+        ic_series[name] = _spearman_ic_series(fdf, fwd)
 
     ic_df = pd.DataFrame(ic_series).sort_index().dropna(how="all")
 

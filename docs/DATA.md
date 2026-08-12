@@ -4,34 +4,29 @@
 
 | Source | File | PIT? | Use |
 |--------|------|------|-----|
-| `file_snapshot` | `universe.path` with column `ticker` | No | Default; fixed membership list |
-| `file_pit` | `universe.path` with `date`, `ticker` | Yes | Historical membership panel |
-| `sp500_wikipedia_snapshot` | optional write to `universe.path` | No | Fetches current S&P 500 from Wikipedia |
+| `file_snapshot` | `universe.path` with column `ticker` | No | Fixed membership list |
+| `file_pit` | `universe.path` with `date`, `ticker` | Yes | Membership filtered at each rebalance |
+| `sp500_wikipedia_snapshot` | optional write to `universe.path` | No | Current S&P 500 from Wikipedia |
 
-No silent fallbacks. If `file_snapshot` is configured and the file is missing, the run fails.
+No silent fallbacks. Missing files or invalid sources fail the run.
 
-Build a snapshot file:
-
-```bash
-python project/scripts/build_universe.py --source sp500_wikipedia_snapshot --path data/raw/universe_sp500.csv
-```
-
-Fast local runs aligned to existing price cache (explicit subset, not an automatic fallback):
+Build snapshots:
 
 ```bash
-python project/scripts/universe_from_price_cache.py --out data/raw/universe.csv
+python project/scripts/build_universe.py --source sp500_wikipedia_snapshot --path project/data/raw/universe_sp500.csv
+python project/scripts/universe_from_price_cache.py --out project/data/raw/universe.csv
 ```
-
-Point `universe.path` at `universe_sp500.csv` for full S&P coverage once prices are fetched.
 
 ## Prices (`data.price_source`)
 
 | Source | API | Notes |
 |--------|-----|-------|
-| `yfinance` | Yahoo Finance via `yfinance` | Adjusted close, `auto_adjust=True` |
-| `stooq` | Stooq via `pandas_datareader` | Symbol format `TICKER.US` |
+| `yfinance` | Yahoo Finance via `yfinance` | Adjusted close, batched download |
+| `stooq` | Stooq via `pandas_datareader` | Symbol `TICKER.US` |
 
-One source per run. Cache: `project/data/raw/prices/{TICKER}.parquet` with manifest `project/data/raw/prices/_manifest.json` recording `source`, `start`, `end`, `rows`.
+One source per run. Cache: `project/data/raw/prices/{TICKER}.parquet` with `_manifest.json` recording `source`, `start`, `end`.
+
+Switching `price_source` without `force_refresh: true` raises if cache source mismatches.
 
 ## Sectors (`universe.sector_source`)
 
@@ -41,13 +36,12 @@ One source per run. Cache: `project/data/raw/prices/{TICKER}.parquet` with manif
 
 ## Validation
 
-After load, `validate_price_panel` checks:
+`validate_price_panel` checks monotonic dates, benchmark presence, positive prices, and drops tickers with >5% missing bars (logged via `warnings.warn`).
 
-- Monotonic dates, no duplicates
-- Benchmark present
-- Max 5% missing bars per ticker
-- Strictly positive prices
+## Label purge (no lookahead)
+
+Training labels are 21-day forward returns. At rebalance date `dt`, training rows are restricted to feature dates `t ≤ last_label_date(dt)`, where `last_label_date` is the last date whose forward return uses only prices on or before `dt`. See `src/labels/forward_returns.py`.
 
 ## Out-of-sample
 
-`research.oos_start`: portfolio PnL and reported metrics use rebalance periods ending on or after this date only. Training still uses walk-forward history before each rebalance date.
+`research.oos_start`: reported PnL and metrics include only rebalance periods ending on or after this date. Walk-forward training still uses history before each rebalance.

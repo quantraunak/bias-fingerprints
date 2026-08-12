@@ -24,3 +24,11 @@ project/data/raw/prices/_manifest.json
 # Reports / outputs
 project/reports/
 project/reports/latest/
+
+# advisor web
+advisor/web/node_modules/
+advisor/web/.next/
+advisor/web/.vercel
+advisor/web/*.tsbuildinfo
+advisor/web/next-env.d.ts
+advisor/**/__pycache__/

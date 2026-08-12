@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import pandas as pd
+
 
 @dataclass(frozen=True)
 class UniverseLoadResult:
@@ -10,6 +12,7 @@ class UniverseLoadResult:
     path: str | None
     is_point_in_time: bool
     warnings: tuple[str, ...] = ()
+    membership: pd.DataFrame | None = None  # columns: date, ticker (PIT only)
 
 
 @dataclass
