@@ -1,108 +1,87 @@
+"""Point-in-time S&P 500 membership.
+
+The old pipeline used a snapshot of *current* index membership for the whole
+history, so every company that was ever deleted -- acquired, bankrupted,
+demoted -- was invisible. That biases every result upward.
+
+Here membership is a set of (ticker, start, end) spells, so a name enters the
+cross-section on the day it joined the index and leaves on the day it left.
+Tickers with more than one spell are handled: several names have been added,
+removed and re-added.
+
+Source: github.com/fja05680/sp500, which reconstructs membership from the
+revision history of the Wikipedia constituents page. It is the best free
+approximation of a CRSP/Norgate point-in-time file. `validate_against_live`
+diffs the final date against the live Wikipedia table so drift is visible
+rather than assumed away.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pandas as pd
+import requests
 
-from src.data.types import UniverseLoadResult
+from src.config import RAW
 
-_VALID_SOURCES = frozenset({"file_snapshot", "file_pit", "sp500_wikipedia_snapshot"})
-
-
-def _read_snapshot_csv(path: Path) -> list[str]:
-    df = pd.read_csv(path)
-    if "ticker" not in df.columns:
-        raise ValueError(f"{path}: snapshot universe must have column 'ticker'")
-    return sorted({str(t).upper().strip() for t in df["ticker"] if pd.notna(t) and str(t).strip()})
+SPELLS_URL = "https://raw.githubusercontent.com/fja05680/sp500/master/sp500_ticker_start_end.csv"
+WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+SPELLS_PATH = RAW / "universe" / "sp500_spells.csv"
 
 
-def _read_pit_csv(path: Path) -> tuple[list[str], pd.DataFrame]:
-    df = pd.read_csv(path)
-    for col in ("date", "ticker"):
-        if col not in df.columns:
-            raise ValueError(f"{path}: PIT universe must have columns 'date' and 'ticker'")
-    df = df.copy()
-    df["date"] = pd.to_datetime(df["date"])
-    df["ticker"] = df["ticker"].astype(str).str.upper().str.strip()
-    return sorted(df["ticker"].unique().tolist()), df[["date", "ticker"]]
+def download_spells(path: Path = SPELLS_PATH) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    response = requests.get(SPELLS_URL, timeout=60)
+    response.raise_for_status()
+    path.write_bytes(response.content)
+    return path
 
 
-def _sp500_from_wikipedia() -> list[str]:
-    import io
-
-    import requests
-
-    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    html = requests.get(url, timeout=30, headers={"User-Agent": "r1000-ls-strategy/1.0"}).text
-    table = pd.read_html(io.StringIO(html))[0]
-    return sorted(
-        table["Symbol"].astype(str).str.replace(".", "-", regex=False).str.upper().unique().tolist()
-    )
+def load_spells(path: Path = SPELLS_PATH) -> pd.DataFrame:
+    """(ticker, start, end) membership spells. `end` is NaT while still a member."""
+    if not path.exists():
+        download_spells(path)
+    spells = pd.read_csv(path, parse_dates=["start_date", "end_date"])
+    spells = spells.rename(columns={"start_date": "start", "end_date": "end"})
+    spells["ticker"] = spells["ticker"].str.upper().str.replace(".", "-", regex=False)
+    return spells.sort_values(["ticker", "start"]).reset_index(drop=True)
 
 
-def load_universe(source: str, path: Path | None, benchmark: str = "SPY") -> UniverseLoadResult:
-    """Load universe from exactly one configured source. No silent fallbacks."""
-    if source not in _VALID_SOURCES:
-        raise ValueError(f"universe.source must be one of {sorted(_VALID_SOURCES)}, got {source!r}")
-
-    warnings: list[str] = []
-    is_pit = False
-    resolved_path: str | None = None
-    membership: pd.DataFrame | None = None
-
-    if source == "file_snapshot":
-        if path is None or not path.exists():
-            raise FileNotFoundError(
-                f"universe.source=file_snapshot requires existing universe.path; missing: {path}"
-            )
-        tickers = _read_snapshot_csv(path)
-        resolved_path = str(path)
-        warnings.append("Snapshot universe: membership is fixed; not point-in-time.")
-
-    elif source == "file_pit":
-        if path is None or not path.exists():
-            raise FileNotFoundError(
-                f"universe.source=file_pit requires existing universe.path; missing: {path}"
-            )
-        tickers, membership = _read_pit_csv(path)
-        resolved_path = str(path)
-        is_pit = True
-
-    else:  # sp500_wikipedia_snapshot
-        tickers = _sp500_from_wikipedia()
-        warnings.append(
-            "sp500_wikipedia_snapshot: current S&P 500 constituents only; survivorship-biased vs history."
-        )
-        if path is not None:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            pd.DataFrame({"ticker": tickers}).to_csv(path, index=False)
-            resolved_path = str(path)
-            warnings.append(f"Wrote snapshot to {path} for reproducibility.")
-
-    bench = benchmark.upper()
-    if bench not in tickers:
-        tickers = sorted(set(tickers) | {bench})
-
-    if len(tickers) < 20:
-        raise ValueError(f"Universe has only {len(tickers)} tickers after adding benchmark.")
-
-    return UniverseLoadResult(
-        tickers=tickers,
-        source=source,
-        path=resolved_path,
-        is_point_in_time=is_pit,
-        warnings=tuple(warnings),
-        membership=membership,
-    )
+def tickers_in_window(spells: pd.DataFrame, start: str, end: str) -> list[str]:
+    """Every ticker that was an index member at any point in [start, end]."""
+    lo, hi = pd.Timestamp(start), pd.Timestamp(end)
+    overlaps = (spells["start"] <= hi) & (spells["end"].isna() | (spells["end"] >= lo))
+    return sorted(spells.loc[overlaps, "ticker"].unique())
 
 
-def active_tickers_on(membership: pd.DataFrame, dt: pd.Timestamp) -> set[str]:
-    """Tickers in the PIT membership panel on rebalance date dt."""
-    on = membership.loc[membership["date"] == dt, "ticker"]
-    if not on.empty:
-        return set(on)
-    prior = membership[membership["date"] <= dt]
-    if prior.empty:
-        return set()
-    last = prior["date"].max()
-    return set(prior.loc[prior["date"] == last, "ticker"])
+def membership_matrix(spells: pd.DataFrame, dates: pd.DatetimeIndex) -> pd.DataFrame:
+    """Boolean date x ticker frame: True where the name was in the index that day."""
+    tickers = sorted(spells["ticker"].unique())
+    matrix = pd.DataFrame(False, index=dates, columns=tickers)
+    for ticker, start, end in spells[["ticker", "start", "end"]].itertuples(index=False):
+        hi = dates.max() if pd.isna(end) else end
+        matrix.loc[(dates >= start) & (dates <= hi), ticker] = True
+    return matrix
+
+
+def active_on(membership: pd.DataFrame, date: pd.Timestamp) -> list[str]:
+    """Index members as of `date`, using the last known row at or before it."""
+    rows = membership.loc[:date]
+    if rows.empty:
+        return []
+    last = rows.iloc[-1]
+    return last.index[last].tolist()
+
+
+def validate_against_live(membership: pd.DataFrame) -> dict:
+    """Diff the final membership row against the live Wikipedia constituents table."""
+    tables = pd.read_html(requests.get(WIKI_URL, timeout=60, headers={"User-Agent": "research"}).text)
+    live = set(tables[0]["Symbol"].str.upper().str.replace(".", "-", regex=False))
+    reconstructed = set(active_on(membership, membership.index.max()))
+    return {
+        "n_live": len(live),
+        "n_reconstructed": len(reconstructed),
+        "missing_from_reconstruction": sorted(live - reconstructed),
+        "extra_in_reconstruction": sorted(reconstructed - live),
+    }

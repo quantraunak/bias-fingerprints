@@ -1,73 +1,94 @@
-# Data contract — see docs/DATA.md
+oos_start: "2014-01-01"
+rebalance: month_end          # resolved to real trading days, never calendar dates
+
 data:
-  price_source: yfinance          # stooq endpoints went dead Aug 2026; yfinance is the working source
-  start: "2010-01-01"
-  end: "2024-12-31"
-  force_refresh: false
-  min_history_days: 252
-  min_tickers: 300                # a real cross-section, not a handful of names
-  min_success_ratio: 0.90
-  max_missing_pct: 0.05
-  retries: 3
-
-universe:
-  source: file_snapshot           # file_snapshot | file_pit | sp500_wikipedia_snapshot
-  path: data/raw/universe_sp500.csv   # full 503-name universe: a decile is 50 names, not 4
+  start: "2004-01-01"
+  end: "2026-08-01"
   benchmark: SPY
-  sector_source: yfinance
+  min_history_days: 252
+  max_missing_pct: 0.20       # generous: PIT names legitimately start and stop
+  min_price: 5.0              # penny-stock screen, applied per rebalance date
+  min_dollar_volume: 5000000.0  # 20d ADV floor, applied per rebalance date
+  sec_user_agent: "raunak.sood@gmail.com"
 
-features:
-  winsorize_limits: [0.01, 0.99]
-  normalize: zscore
-  sector_neutral: true
-
-labels:
+label:
   horizon_days: 21
-
-research:
-  oos_start: "2017-01-01"         # reported metrics use PnL from this date onward
+  target: rank                # cross-sectional rank, per date, mapped to [-0.5, 0.5]
 
 model:
-  type: lightgbm
-  min_train_samples: 2000
-  lightgbm:
-    n_estimators: 200
-    max_depth: 3
-    learning_rate: 0.04
-    subsample: 0.75
-    colsample_bytree: 0.75
-    min_child_samples: 80
-    reg_alpha: 0.2
-    reg_lambda: 2.0
-    n_cv_splits: 3
-    embargo_days: 21
-
-backtest:
-  rebalance_freq: ME
-  train_lookback_months: 36
+  # Chosen by `scripts/compare_models.py`, not by preference. On identical
+  # out-of-sample dates: lgbm ICIR 0.123, equal-weight factors 0.078,
+  # ensemble 0.053, lgbm_rank 0.002, ridge -0.001. With 3-month signal
+  # smoothing the chosen model reaches ICIR 0.163.
+  # The learning-to-rank variant is the interesting failure: it produces a
+  # comparable decile spread but almost no rank correlation, because NDCG is
+  # deliberately top-heavy and a market-neutral book earns from both tails.
+  kind: lgbm
+  n_estimators: 400
+  learning_rate: 0.03
+  num_leaves: 31
+  min_child_samples: 200
+  feature_fraction: 0.7
+  bagging_fraction: 0.7
+  lambda_l2: 5.0
+  ridge_alphas: [1.0, 10.0, 100.0, 1000.0]
+  train_years: 8              # expanding window, capped
+  embargo_days: 21            # equals the label horizon
+  n_folds: 3
+  sample_every_n_days: 5      # thins overlapping labels before uniqueness weights
+  # Trailing average of the score over N rebalances. The information is mostly
+  # in fundamentals that only move on a filing, so averaging sheds model noise
+  # and turnover without shedding much IC.
+  signal_smoothing: 3
 
 portfolio:
-  long_short_quantile: 0.10
-  gross_leverage: 1.8
-  max_weight: 0.05                # must exceed equal-weight (gross/n) or the box is infeasible
-  beta_tolerance: 0.05
-  beta_window: 252
+  quantile: 0.10
+  gross_leverage: 1.5
+  max_weight: 0.03
+  beta_tolerance: 0.03
+  # Objective is in ANNUAL return units: alpha = IC * vol * score (Grinold),
+  # covariance annualised, volatility enforced as a constraint not a penalty.
+  # Annualised trading cost per unit of turnover: 6bp one-way over ~12
+  # rebalances a year. Charged at cost, not inflated, so the optimiser makes
+  # the true economic trade-off between edge and friction.
+  turnover_penalty: 0.0072
+  # Measured out-of-sample IC of the model, used to size the forecast. Set from
+  # scripts/compare_models.py rather than assumed.
+  information_coefficient: 0.0164
   cov_window: 252
-  risk_aversion: 6.0
-  turnover_penalty: 0.25
+  beta_window: 252
   solver: CLARABEL
-
-risk:
-  cov_method: ledoit_wolf
-  vol_target: 0.12
-  vol_lookback: 126
-  vol_ewma_span: 126
-  min_leverage: 0.4
-  max_leverage: 2.0
+  vol_target: 0.08          # annualised risk budget, enforced in the optimiser
   dd_threshold: 0.08
   dd_min_scale: 0.35
 
 costs:
   commission_bps: 1.0
   slippage_bps: 5.0
-  stress_slippage_bps: [5, 10, 20]
+  stress_bps: [5, 10, 20]
+
+factors:
+  # price / volume
+  - beta_252d
+  - mom_12_1
+  - mom_6_1
+  - mom_1m_reversal
+  - mom_residual_12_1
+  - vol_60d
+  - idio_vol_60d
+  - max_ret_1m
+  - turnover_1m
+  - amihud_illiquidity
+  - liquidity_shock
+  - trend_200d
+  # fundamental (point-in-time by filing date)
+  - book_to_market
+  - earnings_yield
+  - cash_flow_yield
+  - sales_to_price
+  - gross_profitability
+  - roe
+  - operating_margin
+  - asset_growth
+  - accruals
+  - net_share_issuance

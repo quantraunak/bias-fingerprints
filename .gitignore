@@ -1,34 +1,24 @@
-.venv/
-*.pyc
-__pycache__/
-logs/
-data/processed/
-*.parquet
-venv/
-venv/
-venv/
-
 # Python
 __pycache__/
 *.pyc
 .venv/
 venv/
 .env
+.DS_Store
 
-# Data + caches
-project/data/raw/prices/
-project/data/raw/prices/*.parquet
-project/data/raw/prices/*.csv
-project/data/raw/prices/_manifest.json
+# Downloaded and derived data. Everything here is reproducible with
+# `python -m scripts.build_data`, so none of it belongs in the repository.
+project/data/
+*.parquet
 
-# Reports / outputs
+# Run outputs. docs/index.html is generated from these and is committed;
+# the runs themselves are not.
 project/reports/
-project/reports/latest/
+logs/
 
-# advisor web
+# advisor web app
 advisor/web/node_modules/
 advisor/web/.next/
-advisor/web/.vercel
+advisor/web/.vercel/
 advisor/web/*.tsbuildinfo
 advisor/web/next-env.d.ts
-advisor/**/__pycache__/
