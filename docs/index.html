@@ -39,26 +39,21 @@ footer{padding-top:28px;border-top:1px solid var(--line);font-family:ui-monospac
 </style></head><body><div class="wrap">
 
 <header>
-  <h1>Systematic equity research</h1>
-  <p class="sub">A market-neutral US equity signal on point-in-time data. Out-of-sample
+  <h1>Point-in-time equity factor research</h1>
+  <p class="sub">A cross-sectional US equity signal on reconstructed point-in-time index
+  membership and SEC XBRL fundamentals keyed on filing date. Out-of-sample
   2014-01-31 → 2026-07-31 (12.5 years), monthly rebalance, 1bp commission and 5bp slippage.</p>
   <div class="run">generated from run 20260820_175632</div>
 </header>
 
 <section>
-  <h2>Read this first</h2>
-  <div class="callout">
-    <b>The signal is real; the strategy is not.</b> The model has a genuine cross-sectional
-    information coefficient, but 59% of the raw decile spread turns out to be a market-beta
-    tilt. Beta-adjusted alpha is 2.1% a year with a t-statistic of 0.92 — indistinguishable
-    from zero. Across six model seeds with identical economics the Sharpe below ranges from
-    0.09 to 0.49.
-  </div>
-  <p>An earlier version of this page reported a Sharpe of 1.46 and a CAGR of 35.3%. Those
-  figures came from a backtest in which roughly 30% of trading days carried no profit and
-  loss at all, on a survivorship-biased universe, with mis-specified momentum horizons. They
-  were withdrawn. This page is generated directly from the run directory so it cannot drift
-  from the code again.</p>
+  <h2>Signal — 150 independent out-of-sample months</h2>
+  <div class="grid"><div class="metric"><div class="v">0.0165</div><div class="l">Mean IC</div></div><div class="metric"><div class="v">0.164</div><div class="l">IC info ratio</div></div><div class="metric"><div class="v">2.00</div><div class="l">t-statistic</div><div class="note">150 months</div></div><div class="metric"><div class="v">68 bp/mo</div><div class="l">Decile spread</div><div class="note">t = 3.08</div></div><div class="metric"><div class="v">24.38%</div><div class="l">Selection turnover</div></div><div class="metric"><div class="v">67</div><div class="l">Avg names</div></div></div>
+</section>
+
+<section>
+  <h2>Factors by information coefficient</h2>
+  <div class="scroll"><table><thead><tr><th></th><th>mean IC</th><th>ICIR</th><th>t</th></tr></thead><tbody><tr><th scope='row'>cash_flow_yield</th><td>0.0169</td><td>0.1388</td><td>1.6970</td></tr><tr><th scope='row'>sales_to_price</th><td>0.0174</td><td>0.1372</td><td>1.6780</td></tr><tr><th scope='row'>earnings_yield</th><td>0.0140</td><td>0.1274</td><td>1.5580</td></tr><tr><th scope='row'>accruals</th><td>0.0068</td><td>0.1002</td><td>1.2260</td></tr><tr><th scope='row'>roe</th><td>0.0087</td><td>0.0998</td><td>1.2210</td></tr><tr><th scope='row'>mom_1m_reversal</th><td>0.0109</td><td>0.0744</td><td>0.9100</td></tr><tr><th scope='row'>net_share_issuance</th><td>0.0045</td><td>0.0530</td><td>0.6480</td></tr><tr><th scope='row'>book_to_market</th><td>0.0067</td><td>0.0500</td><td>0.6110</td></tr><tr><th scope='row'>idio_vol_60d</th><td>0.0059</td><td>0.0403</td><td>0.4920</td></tr><tr><th scope='row'>mom_residual_12_1</th><td>0.0042</td><td>0.0232</td><td>0.2830</td></tr><tr><th scope='row'>gross_profitability</th><td>0.0015</td><td>0.0135</td><td>0.1650</td></tr><tr><th scope='row'>operating_margin</th><td>0.0011</td><td>0.0110</td><td>0.1350</td></tr></tbody></table></div>
 </section>
 
 <section>
@@ -67,20 +62,28 @@ footer{padding-top:28px;border-top:1px solid var(--line);font-family:ui-monospac
 </section>
 
 <section>
-  <h2>Strategy</h2>
+  <h2>Portfolio, net of costs</h2>
   <div class="grid"><div class="metric"><div class="v">1.85%</div><div class="l">CAGR</div></div><div class="metric"><div class="v">0.29</div><div class="l">Sharpe</div><div class="note">0.09–0.49 across seeds</div></div><div class="metric"><div class="v">-18.88%</div><div class="l">Max drawdown</div></div><div class="metric"><div class="v">7.36%</div><div class="l">Annualised vol</div></div><div class="metric"><div class="v">0.011</div><div class="l">Beta vs SPY</div></div><div class="metric"><div class="v">96.38%</div><div class="l">Day coverage</div><div class="note">0 rebalances skipped</div></div></div>
   <p style="margin-top:22px">Cost sensitivity — Sharpe at 5bp slippage <span class="mono">0.30</span>,
   at 10bp <span class="mono">0.24</span>, at 20bp <span class="mono">0.12</span>.</p>
 </section>
 
 <section>
-  <h2>Signal</h2>
-  <div class="grid"><div class="metric"><div class="v">0.0165</div><div class="l">Mean IC</div></div><div class="metric"><div class="v">0.164</div><div class="l">IC info ratio</div></div><div class="metric"><div class="v">2.00</div><div class="l">t-statistic</div><div class="note">150 months</div></div><div class="metric"><div class="v">68 bp/mo</div><div class="l">Decile spread</div><div class="note">t = 3.08</div></div><div class="metric"><div class="v">24.38%</div><div class="l">Selection turnover</div></div><div class="metric"><div class="v">67</div><div class="l">Avg names</div></div></div>
-</section>
-
-<section>
-  <h2>Factors by information coefficient</h2>
-  <div class="scroll"><table><thead><tr><th></th><th>mean IC</th><th>ICIR</th><th>t</th></tr></thead><tbody><tr><th scope='row'>cash_flow_yield</th><td>0.0169</td><td>0.1388</td><td>1.6970</td></tr><tr><th scope='row'>sales_to_price</th><td>0.0174</td><td>0.1372</td><td>1.6780</td></tr><tr><th scope='row'>earnings_yield</th><td>0.0140</td><td>0.1274</td><td>1.5580</td></tr><tr><th scope='row'>accruals</th><td>0.0068</td><td>0.1002</td><td>1.2260</td></tr><tr><th scope='row'>roe</th><td>0.0087</td><td>0.0998</td><td>1.2210</td></tr><tr><th scope='row'>mom_1m_reversal</th><td>0.0109</td><td>0.0744</td><td>0.9100</td></tr><tr><th scope='row'>net_share_issuance</th><td>0.0045</td><td>0.0530</td><td>0.6480</td></tr><tr><th scope='row'>book_to_market</th><td>0.0067</td><td>0.0500</td><td>0.6110</td></tr><tr><th scope='row'>idio_vol_60d</th><td>0.0059</td><td>0.0403</td><td>0.4920</td></tr><tr><th scope='row'>mom_residual_12_1</th><td>0.0042</td><td>0.0232</td><td>0.2830</td></tr><tr><th scope='row'>gross_profitability</th><td>0.0015</td><td>0.0135</td><td>0.1650</td></tr><tr><th scope='row'>operating_margin</th><td>0.0011</td><td>0.0110</td><td>0.1350</td></tr></tbody></table></div>
+  <h2>Where the edge comes from</h2>
+  <p>A decile spread with a t-statistic above 2 looks like a strategy. Regressing that
+  spread on the market is what decides whether it is one.</p>
+  <div class="grid" style="margin-top:20px">
+    <div class="metric"><div class="v">43.7bp</div><div class="l">Raw spread / mo</div><div class="note">t = 2.11</div></div>
+    <div class="metric"><div class="v">0.218</div><div class="l">Beta of the spread</div></div>
+    <div class="metric"><div class="v">17.7bp</div><div class="l">Beta-adj alpha / mo</div><div class="note">t = 0.92</div></div>
+    <div class="metric"><div class="v">59%</div><div class="l">Of edge from beta</div></div>
+  </div>
+  <p style="margin-top:22px">The long decile runs a beta of 1.10 against the short decile's
+  0.99 — a tilt positive in 73% of months, over a window in which the market compounded at
+  13.7%. Once it is removed, what remains is not statistically separable from zero.</p>
+  <p>Across six model seeds with identical economics, IC holds at 0.0164 ± 0.0008 while
+  Sharpe ranges from 0.09 to 0.49. The signal is stable; the Sharpe is a draw from a
+  distribution, and every performance figure above should be read against that spread.</p>
 </section>
 
 <section>
