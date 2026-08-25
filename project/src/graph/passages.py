@@ -1,0 +1,167 @@
+"""Cut a 10-K down to the passages that can name an economic link.
+
+A 10-K runs 250k characters, of which the relationship language occupies a few
+thousand. Sending the whole document to a model would cost roughly twenty times
+as much and extract worse: the relevant sentences get buried among lease
+schedules and accounting policy, and recall drops.
+
+The filter is deliberately generous on recall and cheap to run. Anything that
+survives goes to the model, which does the actual judgement about whether a
+sentence describes a real counterparty.
+"""
+
+from __future__ import annotations
+
+import re
+
+import pandas as pd
+
+# Sections where counterparties are named. Item 1 carries the business
+# description, 1A the dependency risks, and 7 the concentration discussion.
+SECTION_STARTS = [
+    r"item\s*1\s*[\.\-–—:]?\s*business",
+    r"item\s*1a\s*[\.\-–—:]?\s*risk\s*factors",
+    r"item\s*7\s*[\.\-–—:]?\s*management",
+]
+
+# Phrases that actually precede a named counterparty. Weighted: a concentration
+# disclosure is far more likely to name one than a generic mention of customers.
+STRONG = re.compile(
+    r"(accounted for|represented|comprised)\s+(approximately\s+)?\d{1,2}(\.\d+)?%"
+    r"|(\d{1,2}(\.\d+)?%\s+of\s+(our\s+|the\s+company'?s?\s+)?(total\s+)?(net\s+)?(revenue|sales))"
+    r"|largest\s+customer|major\s+customers?|significant\s+customers?|principal\s+customers?"
+    r"|key\s+customers?|primary\s+customers?"
+    r"|sole[\-\s]source|single[\-\s]source|sole\s+supplier"
+    r"|contract\s+manufacturer|foundry\s+partner"
+    r"|customer\s+concentration|concentration\s+of\s+credit\s+risk",
+    re.I,
+)
+
+WEAK = re.compile(
+    r"\bcustomers?\b|\bsuppliers?\b|\bvendors?\b|\bresellers?\b|\bdistributors?\b"
+    r"|\blicensees?\b|\bpartners?\b|\bpurchases?\s+from\b|\bsells?\s+to\b"
+    r"|\bsupplied\s+by\b|\bdepend(s|ent)?\s+(up)?on\b|\brel(y|ies|iant)\s+(up)?on\b",
+    re.I,
+)
+
+# A paragraph naming no proper noun cannot yield an edge, so it is dropped even
+# if it scores well -- "we depend on a small number of customers" is true of
+# everyone and names nobody.
+PROPER_NOUN = re.compile(r"\b[A-Z][a-zA-Z&.\-]{2,}(\s+[A-Z][a-zA-Z&.\-]{1,}){0,4}\b")
+
+# Below this share of the document, a section match is treated as spurious.
+MIN_SECTION_SHARE = 0.15
+
+BOILERPLATE = re.compile(
+    r"forward[\-\s]looking statements|table of contents|see note \d|incorporated by reference",
+    re.I,
+)
+
+
+def sections(text: str) -> str:
+    """Keep Items 1, 1A and 7; fall back to the whole document if unparsed.
+
+    Item headings appear twice in most filings -- once in the table of contents,
+    once at the section itself -- so the *last* match is taken as the real start.
+    """
+    lowered = text.lower()
+    spans: list[tuple[int, int]] = []
+    for pattern in SECTION_STARTS:
+        matches = list(re.finditer(pattern, lowered))
+        if not matches:
+            continue
+        start = matches[-1].start()
+        spans.append((start, min(start + 400_000, len(text))))
+
+    if not spans:
+        return text
+
+    spans.sort()
+    merged = [list(spans[0])]
+    for start, end in spans[1:]:
+        if start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    kept = "\n\n".join(text[start:end] for start, end in merged)
+
+    # A heading match that captures almost nothing is a cross-reference ("see
+    # Item 1A"), not the section itself. Filing layouts vary too much to detect
+    # this case by case, so an implausibly small span falls back to the whole
+    # document: the paragraph scorer is selective enough to absorb the extra.
+    if len(kept) < MIN_SECTION_SHARE * len(text):
+        return text
+    return kept
+
+
+SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"'(])")
+
+
+def paragraphs(text: str, min_chars: int = 120, target_chars: int = 1200) -> list[str]:
+    """Split into scoreable units without trusting the filer's line breaks.
+
+    Blank-line splitting looked obvious and failed on roughly a third of filers:
+    Walmart's 10-K renders as a single 65,000-character block with no blank line
+    in it, so every unit fell outside any sane length bound and nothing was
+    selected. Sentence windows are independent of how a filer's HTML happens to
+    wrap, which makes the unit size comparable across the whole corpus -- and the
+    score below normalises by length, so units have to be comparable for the
+    threshold to mean the same thing everywhere.
+    """
+    flat = re.sub(r"\s+", " ", text).strip()
+    sentences = SENTENCE_END.split(flat)
+
+    out, buffer = [], ""
+    for sentence in sentences:
+        buffer = f"{buffer} {sentence}".strip() if buffer else sentence
+        if len(buffer) >= target_chars:
+            out.append(buffer)
+            buffer = ""
+    if buffer:
+        out.append(buffer)
+
+    return [p for p in out if len(p) >= min_chars and not BOILERPLATE.search(p)]
+
+
+def score(paragraph: str) -> float:
+    """How likely this paragraph names a counterparty."""
+    if not PROPER_NOUN.search(paragraph):
+        return 0.0
+    strong = len(STRONG.findall(paragraph))
+    weak = len(WEAK.findall(paragraph))
+    if strong == 0 and weak == 0:
+        return 0.0
+    # Normalise by length so a long paragraph does not win on volume alone.
+    return (3.0 * strong + weak) / (1.0 + len(paragraph) / 1200.0)
+
+
+def select(text: str, budget_chars: int = 14000, min_score: float = 0.5) -> list[str]:
+    """The highest-scoring passages, in document order, within a char budget."""
+    candidates = [(score(p), i, p) for i, p in enumerate(paragraphs(sections(text)))]
+    candidates = [c for c in candidates if c[0] >= min_score]
+    candidates.sort(key=lambda c: -c[0])
+
+    chosen, used = [], 0
+    for value, index, paragraph in candidates:
+        if used + len(paragraph) > budget_chars:
+            continue
+        chosen.append((index, paragraph))
+        used += len(paragraph)
+    return [paragraph for _, paragraph in sorted(chosen)]
+
+
+def summarize(text: str) -> dict:
+    """Diagnostics for one filing, for tuning the filter without an API call."""
+    selected = select(text)
+    return {
+        "chars_in": len(text),
+        "chars_sections": len(sections(text)),
+        "n_paragraphs": len(paragraphs(sections(text))),
+        "n_selected": len(selected),
+        "chars_selected": sum(len(p) for p in selected),
+        "compression": round(len(text) / max(sum(len(p) for p in selected), 1), 1),
+    }
+
+
+def frame(texts: dict[str, str]) -> pd.DataFrame:
+    return pd.DataFrame([{"key": k, **summarize(v)} for k, v in texts.items()])
