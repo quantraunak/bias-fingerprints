@@ -247,3 +247,38 @@ def summarize(text: str) -> dict:
 
 def frame(texts: dict[str, str]) -> pd.DataFrame:
     return pd.DataFrame([{"key": k, **summarize(v)} for k, v in texts.items()])
+
+
+def prescreen(selected: list[str], lookup, resolver, source_ticker: str) -> tuple[bool, int]:
+    """Can this filing possibly yield a usable edge?
+
+    A claim only becomes an edge if its counterparty resolves to a listed
+    ticker. If no candidate name sits near relationship language, the model has
+    nothing to find and the call is fourteen seconds spent to learn nothing.
+
+    Proximity is the part that matters. A first version accepted any resolving
+    name anywhere in the selected passages and skipped only 4% of filings --
+    every filing mentions *some* capitalised name that happens to collide with a
+    ticker. Requiring the name to sit within `PROXIMITY_CHARS` of a customer or
+    supplier phrase is the same condition under which a real relationship would
+    actually be described.
+
+    Still generous: one qualifying candidate passes the whole filing, and a
+    quantified concentration disclosure passes it even without one, since the
+    model reads names the regex is not built to catch.
+    """
+    hits = 0
+    for paragraph in selected:
+        keywords = [m.start() for m in WEAK.finditer(paragraph)]
+        keywords += [m.start() for m in STRONG.finditer(paragraph)]
+        if not keywords:
+            continue
+        for position, name in company_candidates(paragraph):
+            if not any(abs(position - k) <= PROXIMITY_CHARS for k in keywords):
+                continue
+            ticker, _tier = resolver(name, lookup)
+            if ticker and ticker != source_ticker:
+                hits += 1
+    if hits:
+        return True, hits
+    return any(STRONG.search(p) for p in selected), 0

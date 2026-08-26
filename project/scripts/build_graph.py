@@ -15,6 +15,7 @@ import argparse
 import json
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -24,6 +25,7 @@ import pandas as pd  # noqa: E402
 from src.config import PROCESSED, Config  # noqa: E402
 from src.data import universe  # noqa: E402
 from src.graph import extract, filings, local_model, passages  # noqa: E402
+from src.graph import resolve, supplier_universe  # noqa: E402
 
 CLAIMS_PATH = PROCESSED / "link_claims.parquet"
 EXTRACT_LOG = PROCESSED / "extract_log.parquet"
@@ -52,8 +54,17 @@ def pilot_universe(config: Config, limit: int | None) -> list[str]:
     return ranked[:limit] if limit else ranked
 
 
-def stage_filings(config: Config, limit: int | None, start: str, end: str) -> None:
-    tickers = pilot_universe(config, limit)
+def resolve_universe(config: Config, name: str, limit: int | None) -> list[str]:
+    if name == "supplier":
+        frame = supplier_universe.build_candidates(config.data.sec_user_agent)
+        tickers = frame["ticker"].tolist()
+        return tickers[:limit] if limit else tickers
+    return pilot_universe(config, limit)
+
+
+def stage_filings(config: Config, limit: int | None, start: str, end: str,
+                  universe_name: str = "index") -> None:
+    tickers = resolve_universe(config, universe_name, limit)
     print(f"universe: {len(tickers)} names, 10-Ks filed {start} to {end}")
 
     began = time.time()
@@ -69,7 +80,64 @@ def stage_filings(config: Config, limit: int | None, start: str, end: str) -> No
         print(f"  no CIK mapping ({len(missing)}): {', '.join(missing[:12])}")
 
 
-def stage_extract(config: Config, limit: int | None, model: str) -> None:
+def _prioritise(todo: pd.DataFrame, lookup) -> pd.DataFrame:
+    scores = []
+    for row in todo.itertuples():
+        try:
+            selected = passages.select(Path(row.path).read_text(encoding="utf-8", errors="ignore"))
+        except OSError:
+            scores.append(-1)
+            continue
+        if not selected:
+            scores.append(-1)
+            continue
+        _send, hits = passages.prescreen(selected, lookup, resolve.resolve_one, row.ticker)
+        scores.append(hits)
+    ordered = todo.assign(_priority=scores).sort_values("_priority", ascending=False)
+    positive = int((ordered["_priority"] > 0).sum())
+    print(f"  prioritised: {positive:,} filings with a resolvable candidate first", flush=True)
+    return ordered.drop(columns="_priority")
+
+
+def _extract_one(row, model: str, lookup, source_lookup) -> tuple[list[dict], dict]:
+    """Extract one filing. Pure enough to run on a worker thread."""
+    text = Path(row.path).read_text(encoding="utf-8", errors="ignore")
+    selected = passages.select(text)
+    if not selected:
+        return [], {"accession": row.accession, "ticker": row.ticker, "status": "no_passages",
+                    "n_raw": 0, "n_kept": 0, "seconds": 0.0}
+
+    send, _candidates = passages.prescreen(selected, lookup, source_lookup, row.ticker)
+    if not send:
+        return [], {"accession": row.accession, "ticker": row.ticker, "status": "prescreened",
+                    "n_raw": 0, "n_kept": 0, "seconds": 0.0}
+
+    filed = pd.Timestamp(row.filed).date().isoformat()
+    response = local_model.generate(
+        extract.SYSTEM,
+        extract.user_prompt(row.ticker, row.ticker, filed, selected),
+        extract.Extraction.model_json_schema(),
+        model=model,
+    )
+    if not response.ok:
+        return [], {"accession": row.accession, "ticker": row.ticker, "status": "error",
+                    "n_raw": 0, "n_kept": 0, "seconds": 0.0, "error": response.error}
+
+    raw = extract.parse_response(response.text)
+    kept, tally = extract.validate(raw, selected)
+    records = [{
+        "ticker": row.ticker, "accession": row.accession, "filed": row.filed,
+        "counterparty": link["counterparty"], "relation": link["relation"],
+        "revenue_pct": link.get("revenue_pct"), "confidence": link["confidence"],
+        "evidence": link["evidence"],
+    } for link in kept]
+    log = {"accession": row.accession, "ticker": row.ticker, "status": "ok",
+           "n_raw": len(raw), "n_kept": tally["kept"], "seconds": response.seconds,
+           **{f"rej_{k}": v for k, v in tally.items() if k != "kept"}}
+    return records, log
+
+
+def stage_extract(config: Config, limit: int | None, model: str, workers: int = 4) -> None:
     if not local_model.available():
         raise RuntimeError("Ollama is not responding on :11434. Start it with `ollama serve`.")
 
@@ -83,48 +151,43 @@ def stage_extract(config: Config, limit: int | None, model: str) -> None:
     todo = index[~index["accession"].isin(done)]
     if limit:
         todo = todo.head(limit)
-    print(f"{len(todo):,} filings to extract ({len(done):,} already done), model={model}")
+    print(f"{len(todo):,} filings to extract ({len(done):,} done), model={model}, workers={workers}",
+          flush=True)
 
-    records, log, began = [], [], time.time()
-    for n, row in enumerate(todo.itertuples(), 1):
-        text = Path(row.path).read_text(encoding="utf-8", errors="ignore")
-        selected = passages.select(text)
-        if not selected:
-            log.append({"accession": row.accession, "ticker": row.ticker, "status": "no_passages",
-                        "n_raw": 0, "n_kept": 0, "seconds": 0.0})
-            continue
+    reference = resolve.load_reference(config.data.sec_user_agent)
+    lookup = resolve.build_lookup(reference)
 
-        filed = pd.Timestamp(row.filed).date().isoformat()
-        response = local_model.generate(
-            extract.SYSTEM,
-            extract.user_prompt(row.ticker, row.ticker, filed, selected),
-            extract.Extraction.model_json_schema(),
-            model=model,
-        )
-        if not response.ok:
-            log.append({"accession": row.accession, "ticker": row.ticker, "status": "error",
-                        "n_raw": 0, "n_kept": 0, "seconds": 0.0, "error": response.error})
-            continue
+    # Order by expected yield. Extraction runs at ~14s a filing whatever else is
+    # tuned -- parallel workers gave nothing, because one 8B stream already
+    # saturates the GPU -- so the run is long regardless. Sorting by how many
+    # resolvable counterparties the prescreen can see means the edges arrive in
+    # the first hours rather than uniformly across thirteen, and a run stopped
+    # early is still a usable graph instead of an arbitrary slice.
+    todo = _prioritise(todo, lookup)
 
-        raw = extract.parse_response(response.text)
-        kept, tally = extract.validate(raw, selected)
-        for link in kept:
-            records.append({
-                "ticker": row.ticker, "accession": row.accession, "filed": row.filed,
-                "counterparty": link["counterparty"], "relation": link["relation"],
-                "revenue_pct": link.get("revenue_pct"), "confidence": link["confidence"],
-                "evidence": link["evidence"],
-            })
-        log.append({"accession": row.accession, "ticker": row.ticker, "status": "ok",
-                    "n_raw": len(raw), "n_kept": tally["kept"], "seconds": response.seconds,
-                    **{f"rej_{k}": v for k, v in tally.items() if k != "kept"}})
+    records, log, began, n = [], [], time.time(), 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {
+            pool.submit(_extract_one, row, model, lookup, resolve.resolve_one): row.accession
+            for row in todo.itertuples()
+        }
+        for future in as_completed(futures):
+            n += 1
+            try:
+                got_records, got_log = future.result()
+            except Exception as exc:  # noqa: BLE001 - recorded, not raised
+                log.append({"accession": futures[future], "ticker": None, "status": "exception",
+                            "n_raw": 0, "n_kept": 0, "seconds": 0.0, "error": repr(exc)})
+                continue
+            records.extend(got_records)
+            log.append(got_log)
 
-        if n % 25 == 0 or n == len(todo):
-            rate = (time.time() - began) / n
-            print(f"  {n}/{len(todo)}  {len(records)} claims  {rate:.1f}s/filing  "
-                  f"eta {(len(todo)-n)*rate/60:.0f}m", flush=True)
-            _checkpoint(records, log)
-            records, log = [], []
+            if n % 50 == 0 or n == len(todo):
+                rate = (time.time() - began) / n
+                print(f"  {n}/{len(todo)}  {len(records)} new claims  {rate:.2f}s/filing  "
+                      f"eta {(len(todo)-n)*rate/60:.0f}m", flush=True)
+                _checkpoint(records, log)
+                records, log = [], []
 
     _checkpoint(records, log)
     _report()
@@ -184,13 +247,15 @@ def main() -> None:
     parser.add_argument("--start", default="2010-01-01")
     parser.add_argument("--end", default="2025-12-31")
     parser.add_argument("--model", default=local_model.DEFAULT_MODEL)
+    parser.add_argument("--universe", default="index", choices=["index", "supplier"])
+    parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
 
     config = Config.load(args.config)
     if args.stage == "filings":
-        stage_filings(config, args.limit, args.start, args.end)
+        stage_filings(config, args.limit, args.start, args.end, args.universe)
     elif args.stage == "extract":
-        stage_extract(config, args.limit, args.model)
+        stage_extract(config, args.limit, args.model, args.workers)
     else:
         _report()
 
