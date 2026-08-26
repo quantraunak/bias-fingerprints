@@ -37,6 +37,30 @@ RATE_LIMIT_SECONDS = 0.12  # SEC asks for <= 10 requests/second
 FORMS = {"10-K", "10-K/A"}
 
 
+def _get(url: str, user_agent: str, timeout: int = 60, retries: int = 4):
+    """GET with backoff. EDGAR drops connections under sustained pulling.
+
+    A bulk fetch is thousands of sequential requests and SEC will close one
+    mid-run without warning; the first attempt at this stage died on a
+    RemoteDisconnected after 1,665 documents. Failing the whole run for one
+    reset wastes the work already done, so transport errors and 5xx/429 are
+    retried and a persistent failure returns None for that document only.
+    """
+    for attempt in range(retries):
+        try:
+            time.sleep(RATE_LIMIT_SECONDS)
+            response = requests.get(url, headers={"User-Agent": user_agent}, timeout=timeout)
+            if response.status_code == 200:
+                return response
+            if response.status_code in (429, 500, 502, 503, 504):
+                time.sleep(2.0 * (attempt + 1))
+                continue
+            return None
+        except (requests.exceptions.RequestException, OSError):
+            time.sleep(2.0 * (attempt + 1))
+    return None
+
+
 @dataclass(frozen=True)
 class Filing:
     ticker: str
@@ -60,23 +84,15 @@ def list_filings(ticker: str, cik: int, user_agent: str, start: str, end: str) -
     recent window, so the overflow pages have to be followed or the early years
     silently disappear.
     """
-    time.sleep(RATE_LIMIT_SECONDS)
-    response = requests.get(
-        SUBMISSIONS_URL.format(cik=cik), headers={"User-Agent": user_agent}, timeout=60
-    )
-    if response.status_code != 200:
+    response = _get(SUBMISSIONS_URL.format(cik=cik), user_agent)
+    if response is None:
         return []
     payload = response.json()
 
     blocks = [payload.get("filings", {}).get("recent", {})]
     for extra in payload.get("filings", {}).get("files", []):
-        time.sleep(RATE_LIMIT_SECONDS)
-        page = requests.get(
-            f"https://data.sec.gov/submissions/{extra['name']}",
-            headers={"User-Agent": user_agent},
-            timeout=60,
-        )
-        if page.status_code == 200:
+        page = _get(f"https://data.sec.gov/submissions/{extra['name']}", user_agent)
+        if page is not None:
             blocks.append(page.json())
 
     out: list[Filing] = []
@@ -108,10 +124,9 @@ def fetch_text(filing: Filing, user_agent: str, force: bool = False) -> str | No
     if filing.path.exists() and not force:
         return filing.path.read_text(encoding="utf-8", errors="ignore")
 
-    time.sleep(RATE_LIMIT_SECONDS)
     url = ARCHIVE_URL.format(cik=filing.cik, accession=filing.accession, document=filing.document)
-    response = requests.get(url, headers={"User-Agent": user_agent}, timeout=120)
-    if response.status_code != 200:
+    response = _get(url, user_agent, timeout=120)
+    if response is None:
         return None
 
     text = to_text(response.text)
@@ -154,39 +169,84 @@ def to_text(html: str) -> str:
 def build_index(
     tickers: list[str], user_agent: str, start: str, end: str, force: bool = False
 ) -> pd.DataFrame:
-    """Download every 10-K for `tickers` and return the index of what landed."""
+    """Download every 10-K for `tickers`, writing the index as it goes.
+
+    The index is flushed after each issuer rather than at the end. The first run
+    of this stage crashed on a dropped connection after 1,665 successful
+    downloads and wrote no index at all, which left the expensive work on disk
+    and unusable -- the documents were there and nothing knew what they were.
+    """
     cik_map = load_cik_map(user_agent)
     FILINGS_DIR.mkdir(parents=True, exist_ok=True)
 
-    rows, missing = [], []
+    rows, missing = _existing_rows(), []
+    seen = {row["accession"] for row in rows}
+
     for ticker in tickers:
         cik = cik_map.get(ticker)
         if cik is None:
             missing.append(ticker)
             continue
         for filing in list_filings(ticker, cik, user_agent, start, end):
+            if filing.accession in seen and not force:
+                continue
             text = fetch_text(filing, user_agent, force=force)
             if text is None:
                 continue
-            rows.append(
-                {
-                    "ticker": ticker,
-                    "cik": cik,
-                    "accession": filing.accession,
-                    "form": filing.form,
-                    "filed": filing.filed,
-                    "period": filing.period,
-                    "chars": len(text),
-                    "path": str(filing.path),
-                }
-            )
+            rows.append(_row(filing, cik, len(text)))
+            seen.add(filing.accession)
+        _flush(rows)
 
-    index = pd.DataFrame(rows)
-    if not index.empty:
-        index = index.sort_values(["ticker", "filed"]).reset_index(drop=True)
-        index.to_parquet(INDEX_PATH)
+    index = _flush(rows)
     index.attrs["no_cik"] = sorted(missing)
     return index
+
+
+def _row(filing: Filing, cik: int, chars: int) -> dict:
+    return {
+        "ticker": filing.ticker,
+        "cik": cik,
+        "accession": filing.accession,
+        "form": filing.form,
+        "filed": filing.filed,
+        "period": filing.period,
+        "chars": chars,
+        "path": str(filing.path),
+    }
+
+
+def _existing_rows() -> list[dict]:
+    if not INDEX_PATH.exists():
+        return []
+    return pd.read_parquet(INDEX_PATH).to_dict("records")
+
+
+def _flush(rows: list[dict]) -> pd.DataFrame:
+    if not rows:
+        return pd.DataFrame()
+    index = pd.DataFrame(rows).drop_duplicates("accession")
+    index = index.sort_values(["ticker", "filed"]).reset_index(drop=True)
+    index.to_parquet(INDEX_PATH)
+    return index
+
+
+def rebuild_index(tickers: list[str], user_agent: str, start: str, end: str) -> pd.DataFrame:
+    """Reconstruct the index from documents already on disk, downloading nothing.
+
+    Re-lists each issuer's filings from the submissions API -- cheap, one request
+    per issuer -- and keeps the entries whose text is already cached. Recovers a
+    run whose downloads survived but whose index did not.
+    """
+    cik_map = load_cik_map(user_agent)
+    rows = []
+    for ticker in tickers:
+        cik = cik_map.get(ticker)
+        if cik is None:
+            continue
+        for filing in list_filings(ticker, cik, user_agent, start, end):
+            if filing.path.exists():
+                rows.append(_row(filing, cik, filing.path.stat().st_size))
+    return _flush(rows)
 
 
 def load_index() -> pd.DataFrame:
