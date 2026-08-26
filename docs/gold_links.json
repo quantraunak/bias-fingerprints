@@ -1,0 +1,37 @@
+{
+  "000002319715000039": [],
+  "000118518515001955": [
+    {"_ticker": "FEIM", "counterparty": "Boeing Corporation", "relation": "customer", "revenue_pct": 10.0, "note": "each accounted for more than 10% of FEI-NY segment revenue"},
+    {"_ticker": "FEIM", "counterparty": "Northrop Grumman Corporation", "relation": "customer", "revenue_pct": 10.0},
+    {"_ticker": "FEIM", "counterparty": "Thales Alenia Space", "relation": "customer", "revenue_pct": 10.0, "note": "Paris-listed, expected to fail resolution"}
+  ],
+  "000077126615000006": [],
+  "000156459015002116": [
+    {"_ticker": "AMBA", "counterparty": "Global UniChip Corporation", "relation": "supplier", "revenue_pct": null, "note": "Taipei-listed"},
+    {"_ticker": "AMBA", "counterparty": "Advanced Semiconductor Engineering", "relation": "supplier", "revenue_pct": null},
+    {"_ticker": "AMBA", "counterparty": "Samsung", "relation": "supplier", "revenue_pct": null, "note": "Korea-listed"}
+  ],
+  "000126022115000013": [
+    {"_ticker": "TDG", "counterparty": "The Boeing Company", "relation": "customer", "revenue_pct": null},
+    {"_ticker": "TDG", "counterparty": "Airbus S.A.S", "relation": "customer", "revenue_pct": null, "note": "Paris-listed"}
+  ],
+  "000107937215000002": [],
+  "000156459015001204": [
+    {"_ticker": "DIOD", "counterparty": "Continental AG", "relation": "customer", "revenue_pct": null},
+    {"_ticker": "DIOD", "counterparty": "Delta Electronics", "relation": "customer", "revenue_pct": null},
+    {"_ticker": "DIOD", "counterparty": "Honeywell", "relation": "customer", "revenue_pct": null},
+    {"_ticker": "DIOD", "counterparty": "Osram", "relation": "customer", "revenue_pct": null},
+    {"_ticker": "DIOD", "counterparty": "Phillips", "relation": "customer", "revenue_pct": null},
+    {"_ticker": "DIOD", "counterparty": "Arris", "relation": "customer", "revenue_pct": null},
+    {"_ticker": "DIOD", "counterparty": "Emerson", "relation": "customer", "revenue_pct": null},
+    {"_ticker": "DIOD", "counterparty": "Hella", "relation": "customer", "revenue_pct": null},
+    {"_ticker": "DIOD", "counterparty": "LG Electronics", "relation": "customer", "revenue_pct": null}
+  ],
+  "000117494715001166": [],
+  "000135448815004120": [
+    {"_ticker": "AEHR", "counterparty": "Texas Instruments Incorporated", "relation": "customer", "revenue_pct": 45.0},
+    {"_ticker": "AEHR", "counterparty": "Micronas GMBH", "relation": "customer", "revenue_pct": 11.0},
+    {"_ticker": "AEHR", "counterparty": "Spansion Inc", "relation": "customer", "revenue_pct": 30.0, "note": "fiscal 2014"}
+  ],
+  "000000628115000044": []
+}

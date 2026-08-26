@@ -52,6 +52,12 @@ AMBIGUOUS_SINGLE = {
     "nova", "omega", "sigma", "summit", "sun", "union", "vantage", "vision",
 }
 
+# EDGAR appends the state of incorporation to many registered names --
+# "NORTHROP GRUMMAN CORP /DE/". Stripped before punctuation, because otherwise
+# the slashes go first and "DE" survives as a token: "northrop grumman de" never
+# matches "northrop grumman", and the failure is silent and systematic.
+STATE_MARKER = re.compile(r"/[A-Z]{2}/?\s*$|\s/[A-Z]{2}/\s*")
+
 PUNCTUATION = re.compile(r"[^\w\s]")
 WHITESPACE = re.compile(r"\s+")
 
@@ -97,7 +103,8 @@ def load_reference(user_agent: str, force: bool = False) -> pd.DataFrame:
 
 def normalize(name: str) -> str:
     """Lowercase, strip punctuation, drop corporate suffixes and filler."""
-    text = PUNCTUATION.sub(" ", str(name).lower())
+    text = STATE_MARKER.sub(" ", str(name))
+    text = PUNCTUATION.sub(" ", text.lower())
     text = WHITESPACE.sub(" ", text).strip()
     tokens = [t for t in text.split() if t not in SUFFIXES and not t.isdigit()]
     return " ".join(tokens)
