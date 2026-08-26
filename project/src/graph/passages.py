@@ -44,10 +44,48 @@ WEAK = re.compile(
     re.I,
 )
 
-# A paragraph naming no proper noun cannot yield an edge, so it is dropped even
-# if it scores well -- "we depend on a small number of customers" is true of
-# everyone and names nobody.
-PROPER_NOUN = re.compile(r"\b[A-Z][a-zA-Z&.\-]{2,}(\s+[A-Z][a-zA-Z&.\-]{1,}){0,4}\b")
+# Candidate company names: runs of capitalised tokens, optionally closed by a
+# corporate suffix. Deliberately over-inclusive -- the model decides what is
+# really a counterparty; this only has to get the passage in front of it.
+CAPITALISED_RUN = re.compile(
+    r"\b[A-Z][a-zA-Z&.\-']*(?:\s+(?:[A-Z][a-zA-Z&.\-']*|of|and|de|van|der))*\b"
+)
+
+CORPORATE_SUFFIX = re.compile(
+    r"\b(inc|corp|corporation|company|co|ltd|limited|llc|lp|plc|nv|ag|sa|gmbh|ab|as"
+    r"|holdings?|group|technologies|technology|systems|semiconductor|electronics"
+    r"|industries|laboratories|labs|pharmaceuticals|motors|networks|solutions"
+    r"|partners|international|stores|bank|airlines)\b\.?",
+    re.I,
+)
+
+# Capitalised tokens that are not companies. Sentence-initial words and section
+# furniture dominate the raw matches, and without this the scorer cannot tell a
+# passage naming Samsung from one beginning "However, our customers...".
+NOT_A_COMPANY = {
+    "the", "a", "an", "we", "our", "us", "it", "its", "this", "these", "those", "there",
+    "in", "on", "at", "for", "to", "from", "by", "with", "as", "if", "and", "or", "but",
+    "however", "additionally", "furthermore", "moreover", "although", "while", "because",
+    "item", "note", "notes", "part", "table", "contents", "form", "annual", "report",
+    "risk", "factors", "business", "management", "discussion", "analysis", "overview",
+    "company", "corporation", "inc", "llc", "ltd",
+    "we", "customers", "customer", "suppliers", "supplier", "oem", "oems", "odm", "odms",
+    "tier", "aib", "aibs", "gaap", "sec", "fasb", "asc", "ifrs", "u.s", "us", "usa",
+    "united", "states", "america", "european", "union", "china", "japan", "korea",
+    "taiwan", "india", "canada", "mexico", "germany", "france", "brazil",
+    "january", "february", "march", "april", "may", "june", "july", "august",
+    "september", "october", "november", "december", "fiscal", "year", "quarter",
+    "no", "yes", "none", "not", "all", "any", "each", "such", "certain", "other",
+}
+
+# Generic plurals: dense in boilerplate, never a counterparty.
+GENERIC = re.compile(
+    r"\b(customers|suppliers|vendors|resellers|distributors|retailers|oems?|odms?"
+    r"|manufacturers|partners|clients|third parties|end users|consumers)\b",
+    re.I,
+)
+
+PROXIMITY_CHARS = 300
 
 # Below this share of the document, a section match is treated as spurious.
 MIN_SECTION_SHARE = 0.15
@@ -123,16 +161,60 @@ def paragraphs(text: str, min_chars: int = 120, target_chars: int = 1200) -> lis
     return [p for p in out if len(p) >= min_chars and not BOILERPLATE.search(p)]
 
 
+def company_candidates(paragraph: str) -> list[tuple[int, str]]:
+    """Positions and text of capitalised runs that could be company names."""
+    out = []
+    for match in CAPITALISED_RUN.finditer(paragraph):
+        text = match.group().strip()
+        if len(text) < 3:
+            continue
+        tokens = [t for t in re.split(r"\s+", text) if t]
+        meaningful = [t for t in tokens if t.strip(".,&-'").lower() not in NOT_A_COMPANY]
+        if not meaningful:
+            continue
+        # A single capitalised word at a sentence boundary is usually just a
+        # sentence start; require either more tokens or a corporate suffix.
+        if len(meaningful) == 1 and not CORPORATE_SUFFIX.search(text):
+            before = paragraph[max(0, match.start() - 2) : match.start()]
+            if match.start() == 0 or before.strip().endswith((".", "!", "?", ":", ";")):
+                continue
+        out.append((match.start(), text))
+    return out
+
+
 def score(paragraph: str) -> float:
-    """How likely this paragraph names a counterparty."""
-    if not PROPER_NOUN.search(paragraph):
+    """How likely this paragraph names a real counterparty.
+
+    Scored on *named entities near relationship language*, not on keyword
+    density. Density was the first attempt and it selected exactly the wrong
+    passages: generic risk-factor prose is saturated with "customers",
+    "suppliers" and "OEMs" while naming nobody, so it outscored the paragraph
+    that actually named the foundry. Every counterparty of interest in the NVIDIA
+    filing tested this way -- Taiwan Semiconductor, Samsung, Hon Hai -- was
+    ranked out of the budget by boilerplate.
+    """
+    candidates = company_candidates(paragraph)
+    if not candidates:
         return 0.0
-    strong = len(STRONG.findall(paragraph))
-    weak = len(WEAK.findall(paragraph))
-    if strong == 0 and weak == 0:
+
+    keyword_spans = [m.start() for m in WEAK.finditer(paragraph)]
+    strong_spans = [m.start() for m in STRONG.finditer(paragraph)]
+    if not keyword_spans and not strong_spans:
         return 0.0
-    # Normalise by length so a long paragraph does not win on volume alone.
-    return (3.0 * strong + weak) / (1.0 + len(paragraph) / 1200.0)
+
+    total = 0.0
+    for position, _ in candidates:
+        near_weak = any(abs(position - k) <= PROXIMITY_CHARS for k in keyword_spans)
+        near_strong = any(abs(position - k) <= PROXIMITY_CHARS for k in strong_spans)
+        if near_strong:
+            total += 3.0
+        elif near_weak:
+            total += 1.0
+
+    # Boilerplate tax: passages that are mostly generic plurals are describing a
+    # category, not a counterparty.
+    generic = len(GENERIC.findall(paragraph))
+    return total / (1.0 + 0.5 * generic)
 
 
 def select(text: str, budget_chars: int = 14000, min_score: float = 0.5) -> list[str]:
