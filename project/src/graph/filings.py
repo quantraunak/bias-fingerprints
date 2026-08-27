@@ -36,6 +36,17 @@ ARCHIVE_URL = "https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/{docume
 RATE_LIMIT_SECONDS = 0.12  # SEC asks for <= 10 requests/second
 FORMS = {"10-K", "10-K/A"}
 
+# SEC's ticker file maps a symbol to the issuer's *current* CIK. When a company
+# re-registers, the symbol follows the new entity and its filing history does
+# not: XOM resolves to CIK 2115436, created in a 2024 reorganisation, which has
+# no 10-K before then, while the sixteen filings from 2010 onward sit under the
+# predecessor CIK 34088. Nothing errors -- the issuer simply contributes no
+# documents, which is why the empty-issuer report below matters more than this
+# map. Entries are added only after checking both CIKs by hand.
+CIK_OVERRIDES = {
+    "XOM": 34088,
+}
+
 
 def _get(url: str, user_agent: str, timeout: int = 60, retries: int = 4):
     """GET with backoff. EDGAR drops connections under sustained pulling.
@@ -179,14 +190,15 @@ def build_index(
     cik_map = load_cik_map(user_agent)
     FILINGS_DIR.mkdir(parents=True, exist_ok=True)
 
-    rows, missing = _existing_rows(), []
+    rows, missing, empty = _existing_rows(), [], []
     seen = {row["accession"] for row in rows}
 
     for ticker in tickers:
-        cik = cik_map.get(ticker)
+        cik = CIK_OVERRIDES.get(ticker, cik_map.get(ticker))
         if cik is None:
             missing.append(ticker)
             continue
+        before = len(rows)
         for filing in list_filings(ticker, cik, user_agent, start, end):
             if filing.accession in seen and not force:
                 continue
@@ -195,10 +207,17 @@ def build_index(
                 continue
             rows.append(_row(filing, cik, len(text)))
             seen.add(filing.accession)
+        if len(rows) == before and not any(r["ticker"] == ticker for r in rows):
+            empty.append(ticker)
         _flush(rows)
 
     index = _flush(rows)
     index.attrs["no_cik"] = sorted(missing)
+    # An issuer that resolved to a CIK and still returned nothing is the visible
+    # symptom of a stale mapping. Silence here is what let the XOM gap sit
+    # undetected, so it is surfaced rather than left to a coverage check nobody
+    # runs.
+    index.attrs["no_filings"] = sorted(empty)
     return index
 
 
