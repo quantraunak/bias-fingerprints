@@ -52,6 +52,7 @@ def run(panel: Panel, scores: pd.Series, config: Config) -> BacktestResult:
     days = trading_days[(trading_days >= rebalance_dates[0]) & (trading_days <= trading_days[-1])]
 
     positions = pd.Series(dtype=float)
+    lambda_hint: list[float | None] = [None]
     net, gross, holdings, records, skipped = {}, {}, {}, [], []
     equity_so_far = pd.Series(dtype=float)
 
@@ -66,7 +67,7 @@ def run(panel: Panel, scores: pd.Series, config: Config) -> BacktestResult:
 
         charge = 0.0
         if day in schedule:
-            target = _target_weights(panel, scores, config, day, positions, equity_so_far, skipped)
+            target = _target_weights(panel, scores, config, day, positions, equity_so_far, skipped, lambda_hint)
             if target is not None:
                 charge = cost_module.cost(
                     positions, target, config.costs.commission_bps, config.costs.slippage_bps
@@ -107,6 +108,7 @@ def _target_weights(
     positions: pd.Series,
     equity_so_far: pd.Series,
     skipped: list[dict],
+    lambda_hint: list[float | None] | None = None,
 ) -> pd.Series | None:
     """Deciles of the score, optimised under the risk constraints. None means hold."""
     if day not in scores.index.get_level_values("date"):
@@ -174,7 +176,10 @@ def _target_weights(
             risk_in_objective=config.portfolio.risk_in_objective,
         ),
         industries=panel.industries if config.portfolio.industry_tolerance >= 0 else None,
+        lambda_hint=lambda_hint[0] if lambda_hint else None,
     )
+    if lambda_hint is not None and "risk_aversion" in target.attrs:
+        lambda_hint[0] = target.attrs["risk_aversion"]
 
     # Transfer coefficient: how much of the forecast survived implementation.
     alpha = optimizer.expected_returns(

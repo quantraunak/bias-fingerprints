@@ -38,6 +38,7 @@ SUFFIXES = {
     "gmbh", "ab", "as", "oyj", "spa", "pte", "pty", "kk", "holdings", "holding",
     "group", "the", "and", "of", "intl", "international", "worldwide", "global",
     "usa", "us", "america", "american", "na", "trust", "partners", "lc", "cos",
+    "com",  # "AMAZON COM INC" -> "amazon com" never matched a filing's "Amazon"
 }
 
 # Single tokens too ambiguous to resolve on their own. Each is a real company
@@ -186,15 +187,23 @@ def resolve_one(name: str, lookup: dict) -> tuple[str | None, str]:
     if candidates and len(candidates) == 1:
         return candidates[0], "tokens"
 
-    # Subset match: the filing name may be shorter than the registered name.
-    # Require at least two informative tokens so "General" cannot match
-    # "General Electric", and require a unique winner.
+    # Subset match: the filing name may be shorter than the registered name, or
+    # longer. Both sides need at least two informative tokens.
+    #
+    # Requiring it on the query alone was not enough. "City Holding Co"
+    # normalises to the single token "city", because both "Holding" and "Co" are
+    # suffixes, so every two-word phrase beginning with City matched it -- the
+    # corpus produced "City Council" -> CHCO. A reference name that reduces to
+    # one generic token cannot identify anything, and admitting it as the
+    # subset side is how a governmental body becomes a supply-chain edge.
     if len(tokens) >= 2:
         reference = lookup["reference"]
         first = sorted(tokens)[0]
         hits = []
         for index in lookup["by_first"].get(first, []):
             row = reference.iloc[index]
+            if len(row["tokens"]) < 2:
+                continue
             if tokens <= row["tokens"] or row["tokens"] <= tokens:
                 hits.append(row["ticker"])
         if len(set(hits)) == 1:

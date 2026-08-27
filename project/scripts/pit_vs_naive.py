@@ -30,10 +30,19 @@ tickers = list(panel.prices.columns)
 facts = fundamentals.load_facts(tickers)
 
 def as_of(stamp: str) -> dict[str, pd.DataFrame]:
-    """Build the fundamental panel keyed on `stamp` ('filed' or 'period_end')."""
+    """Fundamental panel under one dating convention.
+
+    filed      - the truth: visible the day the filing landed
+    period_end - the worst case: visible the instant the quarter closed
+    lag45      - common practice: assume every company files 45 days after
+                 quarter end. Right on average, wrong for the ~18% of
+                 filings that arrive later than that.
+    """
     f = facts.copy()
     if stamp == "period_end":
-        f["filed"] = f["period_end"]          # pretend it was public immediately
+        f["filed"] = f["period_end"]
+    elif stamp == "lag45":
+        f["filed"] = f["period_end"] + pd.Timedelta(days=45)
     wide = fundamentals.as_of_panel(f, dates)
     return {
         item: wide[item].unstack("ticker").reindex(columns=tickers)
@@ -63,7 +72,7 @@ fwd.index.names = ["date", "ticker"]
 
 print("building both panels ...", flush=True)
 results = {}
-for stamp, label in [("filed", "PIT"), ("period_end", "NAIVE")]:
+for stamp, label in [("filed", "PIT"), ("lag45", "LAG45"), ("period_end", "NAIVE")]:
     w = as_of(stamp)
     facs = factor_set(w)
     for name, frame in facs.items():
@@ -75,17 +84,24 @@ for stamp, label in [("filed", "PIT"), ("period_end", "NAIVE")]:
         results.setdefault(name, {})[label] = summ
     print(f"  {label} done", flush=True)
 
-print(f"\n{'factor':<22}{'PIT IC':>10}{'NAIVE IC':>11}{'inflation':>11}{'PIT t':>8}{'NAIVE t':>9}")
+hdr = f"{'factor':<22}{'PIT IC':>9}{'LAG45':>9}{'NAIVE':>9}   {'PIT t':>7}{'LAG45 t':>8}{'NAIVE t':>8}"
+print("\n" + hdr)
 rows = []
 for name, r in results.items():
-    p, n = r["PIT"], r["NAIVE"]
-    infl = n["mean_ic"] - p["mean_ic"]
-    rows.append((name, p["mean_ic"], n["mean_ic"], infl, p["t_stat"], n["t_stat"]))
-    print(f"{name:<22}{p['mean_ic']:>10.5f}{n['mean_ic']:>11.5f}{infl:>+11.5f}"
-          f"{p['t_stat']:>8.2f}{n['t_stat']:>9.2f}")
+    p_, l_, n_ = r["PIT"], r["LAG45"], r["NAIVE"]
+    rows.append((name, p_["mean_ic"], l_["mean_ic"], n_["mean_ic"],
+                 p_["t_stat"], l_["t_stat"], n_["t_stat"]))
+    print(f"{name:<22}{p_['mean_ic']:>9.5f}{l_['mean_ic']:>9.5f}{n_['mean_ic']:>9.5f}   "
+          f"{p_['t_stat']:>7.2f}{l_['t_stat']:>8.2f}{n_['t_stat']:>8.2f}")
 
-d = pd.DataFrame(rows, columns=["factor", "pit_ic", "naive_ic", "inflation", "pit_t", "naive_t"])
-print(f"\nmean inflation from ignoring filing dates: {d.inflation.mean():+.5f}")
-print(f"factors where naive looks better          : {(d.inflation > 0).sum()} of {len(d)}")
-print(f"mean |inflation| relative to |PIT IC|     : {(d.inflation.abs().mean() / d.pit_ic.abs().mean()):.1%}")
+d = pd.DataFrame(rows, columns=["factor","pit_ic","lag45_ic","naive_ic","pit_t","lag45_t","naive_t"])
+print()
+for lbl, ic, t in [("fixed 45-day lag", "lag45_ic", "lag45_t"), ("period-end join", "naive_ic", "naive_t")]:
+    infl = d[ic] - d.pit_ic
+    crossed = ((d.pit_t < 2) & (d[t] >= 2)).sum()
+    print(f"{lbl}")
+    print(f"   mean IC inflation vs PIT      {infl.mean():+.5f}"
+          f"   ({infl.abs().mean()/d.pit_ic.abs().mean():.0%} of true IC)")
+    print(f"   factors that look better      {(infl > 0).sum()} of {len(d)}")
+    print(f"   factors crossing t=2 spuriously {crossed} of {len(d)}")
 d.to_csv("reports/pit_vs_naive.csv", index=False)

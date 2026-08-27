@@ -56,6 +56,7 @@ class Objective:
     horizon_days: int = 21
     risk_in_objective: bool = True
     bisection_steps: int = 18
+    warm_steps: int = 5   # steps used when a previous lambda is supplied
 
 
 def expected_returns(
@@ -121,6 +122,7 @@ def optimize(
     constraints: Constraints,
     objective: Objective,
     industries: pd.Series | None = None,
+    lambda_hint: float | None = None,
 ) -> pd.Series:
     tickers = signal.index.tolist()
     if constraints.max_weight * len(tickers) < constraints.gross_leverage:
@@ -178,13 +180,19 @@ def optimize(
     if not objective.risk_in_objective:
         return pd.Series(build(None), index=tickers).round(10)
 
-    solution = _bisect_to_vol_target(build, matrix, constraints.vol_target, objective.bisection_steps)
-    return pd.Series(solution, index=tickers).round(10)
+    solution, risk_aversion = _bisect_to_vol_target(
+        build, matrix, constraints.vol_target,
+        objective.bisection_steps, objective.warm_steps, lambda_hint,
+    )
+    out = pd.Series(solution, index=tickers).round(10)
+    out.attrs["risk_aversion"] = risk_aversion
+    return out
 
 
 def _bisect_to_vol_target(
-    build, matrix: np.ndarray, vol_target: float, steps: int
-) -> np.ndarray:
+    build, matrix: np.ndarray, vol_target: float, steps: int,
+    warm_steps: int = 5, hint: float | None = None,
+) -> tuple[np.ndarray, float]:
     """Find the risk aversion whose optimum runs at the target volatility.
 
     Volatility falls monotonically in lambda, so bisection is well posed and
@@ -192,11 +200,25 @@ def _bisect_to_vol_target(
     assumed: alpha and covariance scales vary across rebalance dates, and a fixed
     bracket silently returns its own endpoint on the dates where it does not
     contain the answer.
+
+    A cold bisection costs a dozen or more QP solves per rebalance, which on a
+    few hundred names dominates the whole backtest. Lambda barely moves between
+    adjacent month-ends -- the alpha and covariance scales are nearly the same --
+    so the previous date's value seeds a narrow bracket and the search usually
+    finishes in a handful of solves. The bracket is still verified and widened if
+    the hint turns out to be wrong, so warm-starting cannot change the answer,
+    only how quickly it is reached.
     """
     def realised(weights: np.ndarray) -> float:
         return float(np.sqrt(max(weights @ matrix @ weights, 0.0)))
 
-    low, high = 1e-6, 1.0
+    if hint is not None and hint > 0:
+        low, high = hint / 8.0, hint * 8.0
+        budget = warm_steps
+    else:
+        low, high = 1e-6, 1.0
+        budget = steps
+
     solution = build(high)
     for _ in range(40):
         if realised(solution) <= vol_target:
@@ -204,16 +226,16 @@ def _bisect_to_vol_target(
         high *= 4.0
         solution = build(high)
 
-    best = solution
-    for _ in range(steps):
+    best, best_lambda = solution, high
+    for _ in range(budget):
         mid = np.sqrt(low * high)  # geometric: lambda spans orders of magnitude
         candidate = build(mid)
         if realised(candidate) > vol_target:
             low = mid
         else:
             high = mid
-            best = candidate
-    return best
+            best, best_lambda = candidate, mid
+    return best, best_lambda
 
 
 def transfer_coefficient(alpha: np.ndarray, weights: np.ndarray, matrix: np.ndarray) -> float:
