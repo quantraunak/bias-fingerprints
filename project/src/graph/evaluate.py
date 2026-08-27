@@ -21,7 +21,9 @@ import pandas as pd
 
 from src.graph import resolve
 
-GOLD_PATH = Path(__file__).resolve().parents[2] / "docs" / "gold_links.json"
+# parents: [0] graph, [1] src, [2] project, [3] repository root -- docs/ is
+# at the repository root, not under project/.
+GOLD_PATH = Path(__file__).resolve().parents[3] / "docs" / "gold_links.json"
 
 
 def _key(counterparty: str, relation: str, lookup: dict | None) -> tuple[str, str]:
