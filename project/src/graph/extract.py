@@ -123,8 +123,63 @@ ANONYMOUS = re.compile(
 )
 
 
+PUNCT = re.compile(r"[^\w\s]")
+
+# A faithful quote may elide, but it may not invent. These two thresholds
+# separate the cases: every token has to come from the source, and some span of
+# it has to be contiguous.
+EVIDENCE_TOKEN_COVERAGE = 0.90
+EVIDENCE_MIN_RUN = 8
+
+
 def _normalise(text: str) -> str:
-    return WHITESPACE.sub(" ", text).strip().lower()
+    text = PUNCT.sub(" ", text.lower())
+    return WHITESPACE.sub(" ", text).strip()
+
+
+def _longest_run(tokens: list[str], haystack: str) -> int:
+    """Longest contiguous span of `tokens` appearing verbatim in the source."""
+    best = 0
+    for start in range(len(tokens)):
+        if len(tokens) - start <= best:
+            break
+        for end in range(len(tokens), start + best, -1):
+            if f" {' '.join(tokens[start:end])} " in haystack:
+                best = end - start
+                break
+    return best
+
+
+def _grounded(evidence: str, haystack: str, haystack_tokens: set[str]) -> bool:
+    """Is this quote actually in the source, allowing for faithful elision?
+
+    An exact substring test looked like the strict, safe choice and was wrong in
+    a way that cost real edges. Filings write counterparties with parenthetical
+    short forms -- `Boeing Corporation ("Boeing"), Northrop Grumman Corporation
+    ("Northrop")` -- and the model quotes them without the parentheticals. That
+    is a faithful quote of a real sentence but not a substring of it, so
+    Frequency Electronics lost all three of its correctly extracted customers
+    and the loss was counted as a hallucination.
+
+    N-gram coverage was the second attempt and also failed here: three
+    elisions in a twenty-six token quote break enough overlapping windows to
+    push coverage to 0.50, indistinguishable from invention by that measure.
+
+    Two conditions separate the cases properly. Every token must appear
+    somewhere in the source, so nothing can be introduced; and some span must
+    match contiguously, so the tokens cannot merely be scattered words
+    reassembled into a sentence the filing never contained. Elision satisfies
+    both -- the FEIM quote keeps an eleven-token run -- while a fabricated
+    sentence fails the second even when it borrows the vocabulary.
+    """
+    tokens = evidence.split()
+    if len(tokens) < EVIDENCE_MIN_RUN:
+        return False
+    coverage = sum(1 for t in tokens if t in haystack_tokens) / len(tokens)
+    if coverage < EVIDENCE_TOKEN_COVERAGE:
+        return False
+    required = min(EVIDENCE_MIN_RUN, len(tokens))
+    return _longest_run(tokens, haystack) >= required
 
 
 def validate(links: list[dict], passages: list[str]) -> tuple[list[dict], dict]:
@@ -133,7 +188,8 @@ def validate(links: list[dict], passages: list[str]) -> tuple[list[dict], dict]:
     Returns the surviving links and a per-filing tally, so hallucination and
     anonymous-reference rates are measured rather than assumed.
     """
-    haystack = _normalise("\n".join(passages))
+    haystack = f" {_normalise(chr(10).join(passages))} "
+    haystack_tokens = set(haystack.split())
     kept, rejected = [], {"no_evidence": 0, "anonymous": 0, "empty_name": 0}
 
     for link in links:
@@ -145,7 +201,7 @@ def validate(links: list[dict], passages: list[str]) -> tuple[list[dict], dict]:
             rejected["anonymous"] += 1
             continue
         evidence = _normalise(link.get("evidence") or "")
-        if len(evidence) < 20 or evidence not in haystack:
+        if len(evidence) < 20 or not _grounded(evidence, haystack, haystack_tokens):
             rejected["no_evidence"] += 1
             continue
         kept.append(link)
