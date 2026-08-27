@@ -70,6 +70,13 @@ class PortfolioConfig:
     vol_target: float
     dd_threshold: float
     dd_min_scale: float
+    # "deciles" truncates to the tails before optimising; "full" hands the
+    # optimiser the whole tradable cross-section and lets the risk term decide
+    # how concentrated to be.
+    selection: str = "deciles"
+    max_cross_section: int = 400
+    industry_tolerance: float = -1.0   # negative disables the constraint
+    risk_in_objective: bool = True
 
 
 @dataclass(frozen=True)

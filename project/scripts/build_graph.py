@@ -149,8 +149,6 @@ def stage_extract(config: Config, limit: int | None, model: str, workers: int = 
         done |= set(pd.read_parquet(EXTRACT_LOG)["accession"].unique())
 
     todo = index[~index["accession"].isin(done)]
-    if limit:
-        todo = todo.head(limit)
     print(f"{len(todo):,} filings to extract ({len(done):,} done), model={model}, workers={workers}",
           flush=True)
 
@@ -164,6 +162,13 @@ def stage_extract(config: Config, limit: int | None, model: str, workers: int = 
     # the first hours rather than uniformly across thirteen, and a run stopped
     # early is still a usable graph instead of an arbitrary slice.
     todo = _prioritise(todo, lookup)
+    # Limit *after* prioritising. Applying it first takes an arbitrary slice and
+    # sorts within it, which is the opposite of the intent: the point of the
+    # ordering is that a truncated run keeps the filings most likely to yield
+    # edges rather than whichever ones happened to sort first by ticker.
+    if limit:
+        todo = todo.head(limit)
+        print(f"  limited to top {len(todo):,} by expected yield", flush=True)
 
     records, log, began, n = [], [], time.time(), 0
     with ThreadPoolExecutor(max_workers=workers) as pool:

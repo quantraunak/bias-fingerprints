@@ -79,6 +79,8 @@ def run(panel: Panel, scores: pd.Series, config: Config) -> BacktestResult:
                         "n_names": int((target.abs() > 1e-8).sum()),
                         "gross": float(target.abs().sum()),
                         "net": float(target.sum()),
+                        "transfer_coefficient": target.attrs.get("transfer_coefficient"),
+                        "n_candidates": target.attrs.get("n_candidates"),
                     }
                 )
                 holdings[day] = target
@@ -115,12 +117,26 @@ def _target_weights(
     tradable = panel.tradable.loc[day]
     today = today[today.index.isin(tradable[tradable].index)]
 
-    n_side = int(len(today) * config.portfolio.quantile)
-    if n_side < 5:
-        skipped.append({"date": day, "reason": "cross_section_too_small", "n": len(today)})
-        return None
+    if config.portfolio.selection == "full":
+        # Hand the optimiser the whole cross-section. Truncating to deciles
+        # first discards the ordering information across the middle of the
+        # distribution -- most of the IC -- before the optimiser ever sees it,
+        # and no risk term can recover what was thrown away upstream.
+        if len(today) > config.portfolio.max_cross_section:
+            half = config.portfolio.max_cross_section // 2
+            selected = pd.concat([today.nlargest(half), today.nsmallest(half)])
+        else:
+            selected = today
+        if len(selected) < 20:
+            skipped.append({"date": day, "reason": "cross_section_too_small", "n": len(today)})
+            return None
+    else:
+        n_side = int(len(today) * config.portfolio.quantile)
+        if n_side < 5:
+            skipped.append({"date": day, "reason": "cross_section_too_small", "n": len(today)})
+            return None
+        selected = pd.concat([today.nlargest(n_side), today.nsmallest(n_side)])
 
-    selected = pd.concat([today.nlargest(n_side), today.nsmallest(n_side)])
     selected = selected[~selected.index.duplicated(keep="first")]
     names = selected.index.tolist()
 
@@ -138,7 +154,7 @@ def _target_weights(
         equity_so_far, config.portfolio.dd_threshold, config.portfolio.dd_min_scale
     )
 
-    return optimizer.optimize(
+    target = optimizer.optimize(
         selected,
         covariance,
         betas,
@@ -148,11 +164,26 @@ def _target_weights(
             max_weight=config.portfolio.max_weight,
             beta_tolerance=config.portfolio.beta_tolerance,
             vol_target=config.portfolio.vol_target * scale,
+            industry_tolerance=config.portfolio.industry_tolerance,
         ),
         optimizer.Objective(
             turnover_penalty=config.portfolio.turnover_penalty,
             solver=config.portfolio.solver,
             information_coefficient=config.portfolio.information_coefficient,
             horizon_days=config.label.horizon_days,
+            risk_in_objective=config.portfolio.risk_in_objective,
         ),
+        industries=panel.industries if config.portfolio.industry_tolerance >= 0 else None,
     )
+
+    # Transfer coefficient: how much of the forecast survived implementation.
+    alpha = optimizer.expected_returns(
+        selected, covariance.loc[names, names],
+        config.portfolio.information_coefficient, config.label.horizon_days,
+    )
+    target.attrs["transfer_coefficient"] = optimizer.transfer_coefficient(
+        alpha, target.reindex(names).fillna(0.0).to_numpy(),
+        covariance.loc[names, names].fillna(0.0).to_numpy() + np.eye(len(names)) * 1e-6,
+    )
+    target.attrs["n_candidates"] = len(names)
+    return target
