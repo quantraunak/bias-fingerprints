@@ -84,6 +84,10 @@ class CostConfig:
     commission_bps: float
     slippage_bps: float
     stress_bps: tuple[float, ...]
+    # Annualised stock-borrow bps on SHORT notional. 40bp is general collateral
+    # for liquid large caps; hard-to-borrow names run multiples of it, so this
+    # is a floor rather than a central estimate.
+    financing_bps: float = 40.0
 
 
 @dataclass(frozen=True)

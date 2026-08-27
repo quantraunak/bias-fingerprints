@@ -87,8 +87,11 @@ def run(panel: Panel, scores: pd.Series, config: Config) -> BacktestResult:
                 holdings[day] = target
                 positions = target
 
+        shorts = float(positions[positions < 0].abs().sum()) if len(positions) else 0.0
+        carry = cost_module.financing(shorts, config.costs.financing_bps)
+
         gross[day] = pnl
-        net[day] = pnl - charge
+        net[day] = pnl - charge - carry
         equity_so_far = pd.Series(net).sort_index()
 
     return BacktestResult(
