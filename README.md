@@ -9,14 +9,23 @@ that runs before any portfolio is constructed.
 | Mean IC | **0.0165** (t = 2.00 over 150 out-of-sample months) |
 | IC information ratio | 0.164 monthly · 0.567 annualised |
 | Decile spread | **68.1bp / month** (t = 3.08) |
-| Universe | 727 names, point-in-time membership, 2004–2026 |
-| Fundamentals | SEC EDGAR XBRL, 648 issuers, keyed on filing date |
+| Universe | 727 names, point-in-time membership, prices from 2004 |
+| Fundamentals | SEC EDGAR XBRL, 648 issuers, keyed on filing date, usable from 2010 |
 | Factors | 22, each signed to its published direction |
 
 The signal carries information. The section on
 [beta decomposition](#beta-decomposition) shows how much of it survives once the market
 exposure embedded in the decile spread is charged against it — which is the question
 that decides whether a factor study is a strategy.
+
+Fundamental coverage begins in 2010, not 2004. The SEC's XBRL mandate phased in over
+2009–2011, so `companyfacts` returns nothing for earlier periods, and the first filings
+carry backfilled historical statements whose filing dates are not the dates the market
+saw. The price panel and the twelve price factors run from 2004; the ten fundamental
+factors do not exist before 2009 and are not stable until 2011. Out-of-sample evaluation
+starts in 2014, so the headline figures are unaffected — but the panel should not be read
+as twenty-two years of fundamentals. This is measured in
+[`docs/BIAS.md`](docs/BIAS.md).
 
 [**Results dashboard**](https://quantraunak.github.io/ls-multifactor-research/) · [Data notes](docs/DATA.md)
 

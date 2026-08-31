@@ -22,3 +22,6 @@ advisor/web/.next/
 advisor/web/.vercel/
 advisor/web/*.tsbuildinfo
 advisor/web/next-env.d.ts
+
+# Generated dataset export; rebuild with 'make dataset'
+project/dist/
