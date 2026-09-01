@@ -84,7 +84,17 @@ Rules:
 
 5. Do not include the filer's own subsidiaries, brands, or product names as counterparties.
 
-6. `revenue_pct` only when the passage states a specific percentage tied to that named counterparty. Otherwise null.
+6. The passage must describe an ONGOING COMMERCIAL RELATIONSHIP between the filer and the counterparty. Reject a named company that appears for any other reason:
+   - Executive and director biographies. "He previously held positions at Intel and BTU International" is a résumé, not a supply chain.
+   - One-off transactions that ended the relationship: an acquisition, a divestiture, a sale of assets or intellectual property. "Lam Research purchased the intellectual property rights relating to our dry strip systems business" is a transaction, not a supplier relationship.
+   - Litigation, disputes, and settlements.
+   - Regulators, courts, agencies, and government bodies acting in an official capacity — the FDIC, the Federal Reserve, a public utility commission, the SEC. A government body that actually BUYS from the filer is a customer; one that oversees the filer is not a counterparty at all.
+   - Index providers, auditors, trustees, and financial counterparties named only in accounting or governance boilerplate.
+   - Countries, regions, states, and cities. "Sole-sourced vendors in the U.S., China, Germany and Japan" names no company.
+
+7. Read the direction from the flow of goods or services, not from which name appears first. If the filer MAKES something the counterparty BUYS, the counterparty is a `customer` — this is the common case for component makers, contract manufacturers and parts suppliers naming the OEMs they sell to. Getting this backwards inverts the economic meaning of the link, so decide it deliberately for every claim.
+
+8. `revenue_pct` only when the passage states a specific percentage tied to that named counterparty. Otherwise null.
 
 Return every qualifying link. If there are none, return an empty list."""
 

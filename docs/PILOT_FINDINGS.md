@@ -69,3 +69,50 @@ mid caps are less arbitraged than the large-cap cross-section.
 
 The infrastructure is unchanged by this. What changes is the universe it points
 at, and that decision is now made on a measurement rather than an assumption.
+
+---
+
+## Correction, 2026-08-31: the universe decision was made on a biased measurement
+
+The conclusion above — that a broad S&P 500 signal is not supportable — was
+reached by counting names that resolve to a listed ticker. Two defects in the
+resolver were found later by auditing corpus output: dotted acronym suffixes
+were shattering before the suffix filter ran, and the subset tier was gated on
+token count rather than on whether the shared tokens could identify a company.
+Together they were losing roughly a third of resolvable names.
+
+Re-measured with `scripts/edge_yield.py`, 300 filings per universe, seed 7, both
+resolvers loaded from git so the comparison is exact:
+
+| universe | resolver | filings with ≥1 counterparty | mean | median |
+|---|---|---|---|---|
+| S&P 500 | at `HEAD~1` | 66.7% | 1.46 | 1 |
+| **S&P 500** | **fixed** | **85.7%** | **3.03** | **3** |
+| concentrated suppliers | at `HEAD~1` | 63.7% | 1.74 | 1 |
+| **concentrated suppliers** | **fixed** | **85.0%** | **3.18** | **3** |
+
+Two things follow, and the second is the one that matters.
+
+**The fix roughly doubles edge yield** on both universes — mean counterparties
+per filing 1.46 → 3.03 and 1.74 → 3.18.
+
+**The gap between the universes is gone.** The S&P 500 now yields 3.03
+counterparties per filing against the supplier universe's 3.18, and 85.7% of
+large-cap filings name at least one resolvable counterparty against 85.0%. The
+entire argument for narrowing the universe was that large caps name nobody. On a
+working resolver they name about as many as the suppliers do.
+
+The narrowing is therefore **withdrawn**. The study returns to the S&P 500
+point-in-time cross-section, which is the universe the price panel, the
+tradability screen and the walk-forward evaluation already cover — so the link
+signal becomes directly comparable to the twenty-two factors rather than living
+in a separate 200-name niche.
+
+One caveat on reading the table against the numbers higher up this page. The
+original pilot counted capitalised names near relationship language with a
+standalone regex scan; `edge_yield.py` counts distinct names that survive
+`passages.select` and the same proximity condition the extractor's prescreen
+applies. The two are not the same measurement, so 0.62 and 1.46 are not directly
+comparable. The A/B within the table is exact — same code, same sample, same
+seed, only the resolver differs — and the cross-universe comparison at the fixed
+resolver is what withdraws the decision.
