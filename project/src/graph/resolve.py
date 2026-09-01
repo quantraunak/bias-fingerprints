@@ -102,20 +102,43 @@ def load_reference(user_agent: str, force: bool = False) -> pd.DataFrame:
     return frame.reset_index(drop=True)
 
 
+# Dotted acronyms: "N.V." and "S.p.A." are corporate suffixes, but stripping
+# punctuation first shatters them into single letters that survive the suffix
+# filter. STMicroelectronics N.V. normalised to "stmicroelectronics n v" and
+# therefore never matched a filing's "STMicroelectronics, Inc." -- a listed
+# counterparty lost to a tokenisation order.
+DOTTED_ACRONYM = re.compile(r"\b(?:[A-Za-z]\.){2,}")
+
+
 def normalize(name: str) -> str:
     """Lowercase, strip punctuation, drop corporate suffixes and filler."""
     text = STATE_MARKER.sub(" ", str(name))
+    text = DOTTED_ACRONYM.sub(lambda m: m.group().replace(".", "") + " ", text)
     text = PUNCTUATION.sub(" ", text.lower())
     text = WHITESPACE.sub(" ", text).strip()
     tokens = [t for t in text.split() if t not in SUFFIXES and not t.isdigit()]
     return " ".join(tokens)
 
 
+# A token appearing in more than this many registered names cannot identify a
+# company on its own. Measured against the registry rather than listed by hand,
+# because no stoplist stays correct as the registry changes.
+#
+# Calibrated on the cases that motivated it. After suffix stripping most
+# registered names are two or three tokens, so document frequencies are small
+# and the boundary sits low: "deere" and "boeing" appear once, "taiwan" twice,
+# "city" six times and "semiconductor" twelve. A ceiling of three admits the
+# first group and refuses the second, which is exactly the split between a
+# token that names one company and a token that names an industry.
+GENERIC_MAX_DF = 3
+
+
 def build_lookup(reference: pd.DataFrame) -> dict:
-    """Indexes for the three match tiers, built once and reused per name."""
+    """Indexes for the match tiers, built once and reused per name."""
     exact: dict[str, list[str]] = {}
     by_tokens: dict[frozenset, list[str]] = {}
     by_first: dict[str, list[int]] = {}
+    token_df: dict[str, int] = {}
 
     for row in reference.itertuples():
         exact.setdefault(row.normalized, []).append(row.ticker)
@@ -123,8 +146,23 @@ def build_lookup(reference: pd.DataFrame) -> dict:
         if row.tokens:
             first = sorted(row.tokens)[0]
             by_first.setdefault(first, []).append(row.Index)
+        for token in row.tokens:
+            token_df[token] = token_df.get(token, 0) + 1
 
-    return {"exact": exact, "by_tokens": by_tokens, "by_first": by_first, "reference": reference}
+    return {
+        "exact": exact,
+        "by_tokens": by_tokens,
+        "by_first": by_first,
+        "reference": reference,
+        "token_df": token_df,
+        "generic_max_df": GENERIC_MAX_DF,
+    }
+
+
+def distinctive(tokens, lookup: dict) -> set:
+    """Tokens rare enough in the registry to identify a company."""
+    df, ceiling = lookup["token_df"], lookup["generic_max_df"]
+    return {t for t in tokens if df.get(t, 0) <= ceiling}
 
 
 # Counterparties whose filing name never matches their registered name. Kept
@@ -188,23 +226,32 @@ def resolve_one(name: str, lookup: dict) -> tuple[str | None, str]:
         return candidates[0], "tokens"
 
     # Subset match: the filing name may be shorter than the registered name, or
-    # longer. Both sides need at least two informative tokens.
+    # longer. What makes one safe is not how many tokens it has but whether the
+    # tokens the two sides share can identify a company at all.
     #
-    # Requiring it on the query alone was not enough. "City Holding Co"
-    # normalises to the single token "city", because both "Holding" and "Co" are
-    # suffixes, so every two-word phrase beginning with City matched it -- the
-    # corpus produced "City Council" -> CHCO. A reference name that reduces to
-    # one generic token cannot identify anything, and admitting it as the
-    # subset side is how a governmental body becomes a supply-chain edge.
-    if len(tokens) >= 2:
+    # A token-count rule was the first attempt and failed in both directions.
+    # Requiring two tokens on the query alone let "City Council" reach CHCO,
+    # because "City Holding Co" reduces to the single generic token "city".
+    # Requiring two on the reference side then blocked "John Deere" -> DE, since
+    # "Deere & Co" also reduces to one token -- but "deere" names exactly one
+    # registrant and "city" names many. Counting tokens cannot tell those apart.
+    #
+    # Sharing a *distinctive* token can. Semiconductor Manufacturing
+    # International and Taiwan Semiconductor Manufacturing overlap on
+    # {semiconductor, manufacturing}, both generic in this registry, so the
+    # match is refused -- it previously resolved SMIC to TSM and put a Taiwanese
+    # foundry's return series on a Chinese foundry's edge.
+    if tokens:
         reference = lookup["reference"]
-        first = sorted(tokens)[0]
         hits = []
-        for index in lookup["by_first"].get(first, []):
-            row = reference.iloc[index]
-            if len(row["tokens"]) < 2:
-                continue
-            if tokens <= row["tokens"] or row["tokens"] <= tokens:
+        for first in sorted(tokens):
+            for index in lookup["by_first"].get(first, []):
+                row = reference.iloc[index]
+                other = row["tokens"]
+                if not (tokens <= other or other <= tokens):
+                    continue
+                if not distinctive(tokens & other, lookup):
+                    continue
                 hits.append(row["ticker"])
         if len(set(hits)) == 1:
             return hits[0], "subset"
