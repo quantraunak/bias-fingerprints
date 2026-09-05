@@ -41,6 +41,21 @@ is a prerequisite for treating E3 or E4 as an improvement over E1.
 | R3 | Subset tier gated on registry document frequency of the shared tokens | R2 failures, both directions | Current. Claim match rate 34.3% → 39.9%. |
 | R4 | Historical names from EDGAR `formerNames` | Raytheon, Navistar, Chrysler and Alcatel-Lucent resolve to nothing because the registry holds only current names | **Not built.** Resolving twenty years of filing text against a current-name registry is itself a survivorship problem. |
 
+## Annotation rules
+
+Four cases recur across filings and cannot be decided per-filing without the
+benchmark becoming inconsistent. Decided 2026-09-04, applied to every annotation
+including the five already written. Each is reversible: annotations carry the
+evidence span and a `related_party` tag, so a different ruling can be applied by
+re-filtering rather than re-reading.
+
+| # | Case | Ruling | Reasoning |
+|---|---|---|---|
+| A1 | Government buyers (NASA, DoD, Homeland Security) | **Include** as `customer` | Extraction should be faithful to the filing; resolution is the right stage to drop what cannot be traded. Excluding at extraction would hide 43% of Boeing's revenue from the benchmark and conflate two different judgements. |
+| A2 | Joint ventures the filer part-owns (AMD's ATMP JV, Boeing's ULA and Sea Launch) | **Include**, tagged `related_party` | A supplier by function and a related party by structure. Tagging keeps both readings available, so a related-party-excluded robustness cut costs a filter rather than a re-annotation. |
+| A3 | A real relationship named only inside an executive biography (First Solar's 8point3 yieldco with SunPower) | **Exclude** | The biography rule has to be mechanical or it stops being a rule. A model cannot be expected to distinguish a true corporate fact inside a résumé from a false one, and the failure mode this guards against — Lucent, Ericsson, Medtronic, GE as counterparties — is the dominant source of 8B false positives. |
+| A4 | A historical agreement surfaced for an unrelated purpose (NVIDIA's 2000 Xbox agreement, cited in 2018 to explain a change-of-control provision) | **Exclude** | The filing offers no evidence the relationship is live on the filing date, and edge validity intervals start at the filing date. |
+
 ## Signal
 
 *Empty. No forward return has been regressed on any graph-derived quantity.*
