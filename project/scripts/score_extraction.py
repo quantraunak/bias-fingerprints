@@ -11,6 +11,7 @@ good enough, and this is where that number comes from.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -18,8 +19,26 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pandas as pd  # noqa: E402
 
-from src.config import Config  # noqa: E402
+from src.config import Config, PROCESSED  # noqa: E402
 from src.graph import evaluate, extract, filings, local_model, passages, resolve  # noqa: E402
+
+# A 32B model needs ~150s per filing and 22GB resident, which on a 36GB machine
+# is close enough to the ceiling that the OS kills the run partway through.
+# Caching each response keyed by (model, filing) makes a kill cost only the
+# filing in flight, so a long scoring run is resumed rather than restarted.
+CACHE = PROCESSED / "extract_cache"
+
+
+def cached_generate(model: str, accession: str, system: str, prompt: str, schema: dict):
+    path = CACHE / model.replace(":", "_") / f"{accession}.json"
+    if path.exists():
+        return json.loads(path.read_text())["text"], True
+    response = local_model.generate(system, prompt, schema, model=model, timeout=1800)
+    if not response.ok:
+        return None, False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"text": response.text, "seconds": response.seconds}))
+    return response.text, False
 
 
 def main() -> None:
@@ -40,22 +59,21 @@ def main() -> None:
         row = index.loc[accession]
         text = Path(row.path).read_text(encoding="utf-8", errors="ignore")
         selected = passages.select(text)
-        response = local_model.generate(
-            extract.SYSTEM,
+        reply, cache_hit = cached_generate(
+            args.model, accession, extract.SYSTEM,
             extract.user_prompt(row.ticker, row.ticker, str(pd.Timestamp(row.filed).date()), selected),
             extract.Extraction.model_json_schema(),
-            model=args.model,
         )
-        if not response.ok:
-            print(f"  {row.ticker}: extraction failed ({response.error})")
+        if reply is None:
+            print(f"  {row.ticker}: extraction failed")
             continue
-        raw = extract.parse_response(response.text)
+        raw = extract.parse_response(reply)
         kept, tally = extract.validate(raw, selected)
         for link in kept:
             rows.append({"accession": accession, "ticker": row.ticker,
                          "counterparty": link["counterparty"], "relation": link["relation"]})
         print(f"  {row.ticker:6} raw={len(raw):2} kept={tally['kept']:2} "
-              f"gold={len(gold[accession]):2}", flush=True)
+              f"gold={len(gold[accession]):2}{'  (cached)' if cache_hit else ''}", flush=True)
 
     predicted = pd.DataFrame(rows)
     if predicted.empty:
