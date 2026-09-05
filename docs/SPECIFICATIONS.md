@@ -27,10 +27,28 @@ the log starts before the first test rather than being reconstructed after it.
 | E3 | Prompt v2 — adds explicit rejection of executive biographies, one-off transactions (acquisitions, IP sales), litigation, regulators and government bodies, financial boilerplate, and geographies; states direction as the flow of goods | four observed E1 failure classes | Current. Not yet scored. |
 | E4 | Claude Opus 5 via the Batch API | E1 precision | Built, not yet run. |
 
+| E5 | Qwen 3 32B, run locally | E4 needs API credit this project does not have | Built, scoring. Free, ~35s/filing on an M3 Max. |
+
 Every extraction specification is scored against the same annotated sample, so
-the numbers are comparable. The sample is currently 10 filings and 20 links,
-which is too small to separate 0.22 from 0.30 with any confidence; expanding it
-is a prerequisite for treating E3 or E4 as an improvement over E1.
+the numbers are comparable.
+
+**Benchmark v2** (`docs/gold_links.json`, 2026-09-04): 10 filings, 50 links,
+5 of them empty. Replaces v1 (archived as `gold_links_v1.json`), which had
+20 links and four filings annotated empty that were never verified — the model
+predicted 11, 15, 6 and 8 links on them, and precision 0.22 rested entirely on
+whether those were right.
+
+v2 is harder on purpose. Five filings are rich-looking and genuinely empty:
+First Solar names eleven companies, all inside executive biographies; Qualcomm
+names Veoneer, Arriver, SSW Partners, Magna, PwC and the European Commission,
+all acquisitions, transaction counterparties or regulators. Every excluded name
+is listed in `gold_exclusions.md` with the rule that excluded it, so the
+benchmark's negatives are auditable rather than implicit.
+
+One number falls out of building it. Across the sample, 85.7% of filings carry a
+resolvable name near relationship language, but only half disclose a real
+relationship. That gap is the noise any extractor has to filter, and it is why
+precision rather than recall is the binding constraint.
 
 ## Resolution
 

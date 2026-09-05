@@ -1,37 +1,376 @@
 {
-  "000002319715000039": [],
-  "000118518515001955": [
-    {"_ticker": "FEIM", "counterparty": "Boeing Corporation", "relation": "customer", "revenue_pct": 10.0, "note": "each accounted for more than 10% of FEI-NY segment revenue"},
-    {"_ticker": "FEIM", "counterparty": "Northrop Grumman Corporation", "relation": "customer", "revenue_pct": 10.0},
-    {"_ticker": "FEIM", "counterparty": "Thales Alenia Space", "relation": "customer", "revenue_pct": 10.0, "note": "Paris-listed, expected to fail resolution"}
+  "000000248818000042": [
+    {
+      "_ticker": "AMD",
+      "counterparty": "Sony Interactive Entertainment LLC",
+      "evidence": "Collectively, Sony Interactive Entertainment LLC, Microsoft Corporation and HP Inc. accounted for approximately 44% of our consolidated net revenue for the year ended December 30, 2017.",
+      "note": "44% is the combined share of three named customers; not attributable to any one, so revenue_pct is null",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "AMD",
+      "counterparty": "Microsoft Corporation",
+      "evidence": "Collectively, Sony Interactive Entertainment LLC, Microsoft Corporation and HP Inc. accounted for approximately 44% of our consolidated net revenue for the year ended December 30, 2017.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "AMD",
+      "counterparty": "HP Inc.",
+      "evidence": "Collectively, Sony Interactive Entertainment LLC, Microsoft Corporation and HP Inc. accounted for approximately 44% of our consolidated net revenue for the year ended December 30, 2017.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "AMD",
+      "counterparty": "GF",
+      "evidence": "Pursuant to the WSA, we are required to purchase from GF all of our microprocessor and APU product requirements and a certain portion of our GPU product requirements, with limited exceptions.",
+      "note": "GlobalFoundries, referred to throughout as GF; not listed until 2021",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "AMD",
+      "counterparty": "ATMP JV",
+      "evidence": "The ATMP JV provides assembly, test, mark and packaging (ATMP) services to us.",
+      "related_party": true,
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "AMD",
+      "counterparty": "Tianjin Haiguang Advanced Technology Investment Co., Ltd.",
+      "evidence": "In February 2016, we and Tianjin Haiguang Advanced Technology Investment Co., Ltd.",
+      "relation": "partner",
+      "revenue_pct": null
+    }
   ],
-  "000077126615000006": [],
-  "000156459015002116": [
-    {"_ticker": "AMBA", "counterparty": "Global UniChip Corporation", "relation": "supplier", "revenue_pct": null, "note": "Taipei-listed"},
-    {"_ticker": "AMBA", "counterparty": "Advanced Semiconductor Engineering", "relation": "supplier", "revenue_pct": null},
-    {"_ticker": "AMBA", "counterparty": "Samsung", "relation": "supplier", "revenue_pct": null, "note": "Korea-listed"}
+  "000070754921000136": [
+    {
+      "_ticker": "LRCX",
+      "counterparty": "Intel Corporation",
+      "evidence": "Our most significant customers during the fiscal years ending June 27, 2021, June 28, 2020, and June 30, 2019 included Intel Corporation; Kioxia Corporation; Micron Technology, Inc.; Samsung Electronics Company, Ltd.; SK hynix Inc.; Taiwan Semiconductor Manufacturing Company; and Yangtze Memory Technologies Co., Ltd.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "LRCX",
+      "counterparty": "Kioxia Corporation",
+      "evidence": "Our most significant customers during the fiscal years ending June 27, 2021, June 28, 2020, and June 30, 2019 included Intel Corporation; Kioxia Corporation; Micron Technology, Inc.; Samsung Electronics Company, Ltd.; SK hynix Inc.; Taiwan Semiconductor Manufacturing Company; and Yangtze Memory Technologies Co., Ltd.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "LRCX",
+      "counterparty": "Micron Technology, Inc.",
+      "evidence": "Our most significant customers during the fiscal years ending June 27, 2021, June 28, 2020, and June 30, 2019 included Intel Corporation; Kioxia Corporation; Micron Technology, Inc.; Samsung Electronics Company, Ltd.; SK hynix Inc.; Taiwan Semiconductor Manufacturing Company; and Yangtze Memory Technologies Co., Ltd.",
+      "note": "Micron also appears in an executive biography later in the filing; this link stands on its own evidence, the biography mention does not",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "LRCX",
+      "counterparty": "Samsung Electronics Company, Ltd.",
+      "evidence": "Our most significant customers during the fiscal years ending June 27, 2021, June 28, 2020, and June 30, 2019 included Intel Corporation; Kioxia Corporation; Micron Technology, Inc.; Samsung Electronics Company, Ltd.; SK hynix Inc.; Taiwan Semiconductor Manufacturing Company; and Yangtze Memory Technologies Co., Ltd.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "LRCX",
+      "counterparty": "SK hynix Inc.",
+      "evidence": "Our most significant customers during the fiscal years ending June 27, 2021, June 28, 2020, and June 30, 2019 included Intel Corporation; Kioxia Corporation; Micron Technology, Inc.; Samsung Electronics Company, Ltd.; SK hynix Inc.; Taiwan Semiconductor Manufacturing Company; and Yangtze Memory Technologies Co., Ltd.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "LRCX",
+      "counterparty": "Taiwan Semiconductor Manufacturing Company",
+      "evidence": "Our most significant customers during the fiscal years ending June 27, 2021, June 28, 2020, and June 30, 2019 included Intel Corporation; Kioxia Corporation; Micron Technology, Inc.; Samsung Electronics Company, Ltd.; SK hynix Inc.; Taiwan Semiconductor Manufacturing Company; and Yangtze Memory Technologies Co., Ltd.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "LRCX",
+      "counterparty": "Yangtze Memory Technologies Co., Ltd.",
+      "evidence": "Our most significant customers during the fiscal years ending June 27, 2021, June 28, 2020, and June 30, 2019 included Intel Corporation; Kioxia Corporation; Micron Technology, Inc.; Samsung Electronics Company, Ltd.; SK hynix Inc.; Taiwan Semiconductor Manufacturing Company; and Yangtze Memory Technologies Co., Ltd.",
+      "relation": "customer",
+      "revenue_pct": null
+    }
   ],
-  "000126022115000013": [
-    {"_ticker": "TDG", "counterparty": "The Boeing Company", "relation": "customer", "revenue_pct": null},
-    {"_ticker": "TDG", "counterparty": "Airbus S.A.S", "relation": "customer", "revenue_pct": null, "note": "Paris-listed"}
+  "000080432823000055": [],
+  "000090825516000077": [
+    {
+      "_ticker": "BWA",
+      "counterparty": "Volkswagen",
+      "evidence": "Our worldwide sales in 2015 to Volkswagen and Ford constituted approximately 15% each of our 2015 consolidated net sales.",
+      "note": "\"15% each\" attributes the figure to both counterparties individually, unlike AMD's collective 44%",
+      "relation": "customer",
+      "revenue_pct": 15.0
+    },
+    {
+      "_ticker": "BWA",
+      "counterparty": "Ford",
+      "evidence": "Our worldwide sales in 2015 to Volkswagen and Ford constituted approximately 15% each of our 2015 consolidated net sales.",
+      "relation": "customer",
+      "revenue_pct": 15.0
+    },
+    {
+      "_ticker": "BWA",
+      "counterparty": "Fiat Chrysler Automobiles",
+      "evidence": "All three of our primary North American customers, Ford, Fiat Chrysler Automobiles and General Motors, have major union contracts with the United Automobile, Aerospace and Agricultural Implement Workers of America.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BWA",
+      "counterparty": "General Motors",
+      "evidence": "All three of our primary North American customers, Ford, Fiat Chrysler Automobiles and General Motors, have major union contracts with the United Automobile, Aerospace and Agricultural Implement Workers of America.",
+      "relation": "customer",
+      "revenue_pct": null
+    }
   ],
-  "000107937215000002": [],
-  "000156459015001204": [
-    {"_ticker": "DIOD", "counterparty": "Continental AG", "relation": "customer", "revenue_pct": null},
-    {"_ticker": "DIOD", "counterparty": "Delta Electronics", "relation": "customer", "revenue_pct": null},
-    {"_ticker": "DIOD", "counterparty": "Honeywell", "relation": "customer", "revenue_pct": null},
-    {"_ticker": "DIOD", "counterparty": "Osram", "relation": "customer", "revenue_pct": null},
-    {"_ticker": "DIOD", "counterparty": "Phillips", "relation": "customer", "revenue_pct": null},
-    {"_ticker": "DIOD", "counterparty": "Arris", "relation": "customer", "revenue_pct": null},
-    {"_ticker": "DIOD", "counterparty": "Emerson", "relation": "customer", "revenue_pct": null},
-    {"_ticker": "DIOD", "counterparty": "Hella", "relation": "customer", "revenue_pct": null},
-    {"_ticker": "DIOD", "counterparty": "LG Electronics", "relation": "customer", "revenue_pct": null}
+  "000095012310052098": [],
+  "000104581018000010": [
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Ibiden Co. Ltd.",
+      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Nanya Technology Corporation",
+      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Unimicron Technology Corporation",
+      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Micron Technology",
+      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Samsung Semiconductor, Inc.",
+      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "SK Hynix",
+      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "BYD",
+      "evidence": "We also utilize industry-leading contract manufacturers, or CMs, such as BYD and Quanta Computer, to manufacture some of our products for sale directly to end customers.",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Quanta Computer",
+      "evidence": "We also utilize industry-leading contract manufacturers, or CMs, such as BYD and Quanta Computer, to manufacture some of our products for sale directly to end customers.",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Aurora",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Autoliv",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Baidu",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Bosch",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Continental",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Mercedes-Benz",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Uber",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Volkswagen",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Volvo",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Toyota",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "ZF",
+      "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
+      "relation": "partner",
+      "revenue_pct": null
+    }
   ],
-  "000117494715001166": [],
-  "000135448815004120": [
-    {"_ticker": "AEHR", "counterparty": "Texas Instruments Incorporated", "relation": "customer", "revenue_pct": 45.0},
-    {"_ticker": "AEHR", "counterparty": "Micronas GMBH", "relation": "customer", "revenue_pct": 11.0},
-    {"_ticker": "AEHR", "counterparty": "Spansion Inc", "relation": "customer", "revenue_pct": 30.0, "note": "fiscal 2014"}
+  "000119312510024406": [
+    {
+      "_ticker": "BA",
+      "counterparty": "Lockheed Martin Corporation",
+      "evidence": "BDS faces strong competition in all market segments, primarily from Lockheed Martin Corporation, Northrop Grumman Corporation, Raytheon Company and General Dynamics Corporation.",
+      "relation": "competitor",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "Northrop Grumman Corporation",
+      "evidence": "BDS faces strong competition in all market segments, primarily from Lockheed Martin Corporation, Northrop Grumman Corporation, Raytheon Company and General Dynamics Corporation.",
+      "relation": "competitor",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "Raytheon Company",
+      "evidence": "BDS faces strong competition in all market segments, primarily from Lockheed Martin Corporation, Northrop Grumman Corporation, Raytheon Company and General Dynamics Corporation.",
+      "relation": "competitor",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "General Dynamics Corporation",
+      "evidence": "BDS faces strong competition in all market segments, primarily from Lockheed Martin Corporation, Northrop Grumman Corporation, Raytheon Company and General Dynamics Corporation.",
+      "relation": "competitor",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "BAE Systems",
+      "evidence": "companies such as BAE Systems and European Aeronautic Defence and Space Company (EADS), the parent of Airbus, continue to pursue a strategic presence in the U.S. market",
+      "relation": "competitor",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "European Aeronautic Defence and Space Company",
+      "evidence": "companies such as BAE Systems and European Aeronautic Defence and Space Company (EADS), the parent of Airbus, continue to pursue a strategic presence in the U.S. market",
+      "note": "Airbus is named only as EADS's parent-of relation, not as a Boeing counterparty in its own right, so it is not a separate link",
+      "relation": "competitor",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "AirTran Airways",
+      "evidence": "AirTran Airways, American Airlines, Hawaiian Airlines and Continental Airlines were associated with 25%, 15%, 7% and 7%, respectively, of our financing portfolio.",
+      "note": "percentages are shares of the financing portfolio, not of revenue, so revenue_pct stays null",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "American Airlines",
+      "evidence": "AirTran Airways, American Airlines, Hawaiian Airlines and Continental Airlines were associated with 25%, 15%, 7% and 7%, respectively, of our financing portfolio.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "Hawaiian Airlines",
+      "evidence": "AirTran Airways, American Airlines, Hawaiian Airlines and Continental Airlines were associated with 25%, 15%, 7% and 7%, respectively, of our financing portfolio.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "Continental Airlines",
+      "evidence": "AirTran Airways, American Airlines, Hawaiian Airlines and Continental Airlines were associated with 25%, 15%, 7% and 7%, respectively, of our financing portfolio.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "NASA",
+      "evidence": "We deal with numerous U.S. government agencies and entities, including but not limited to all of the branches of the U.S. military, NASA and the Department of Homeland Security.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "Department of Homeland Security",
+      "evidence": "We deal with numerous U.S. government agencies and entities, including but not limited to all of the branches of the U.S. military, NASA and the Department of Homeland Security.",
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "ULA",
+      "evidence": "Since inception, ULA has consumed $1,111 of inventories that were contributed by us and has made advances of $120 to us under the inventory supply agreement.",
+      "related_party": true,
+      "relation": "customer",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "BA",
+      "counterparty": "Sea Launch",
+      "evidence": "we have rights to reimbursement from Sea Launch as well as the other Sea Launch partners, who are each obligated to reimburse us so that we contribute no more than our proportional ownership percentage",
+      "related_party": true,
+      "relation": "partner",
+      "revenue_pct": null
+    }
   ],
-  "000000628115000044": []
+  "000120677411001935": [],
+  "000127449422000009": [],
+  "000156459018022409": []
 }
