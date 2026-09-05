@@ -134,43 +134,43 @@
   "000104581018000010": [
     {
       "_ticker": "NVDA",
-      "counterparty": "Ibiden Co. Ltd.",
-      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "counterparty": "IbidenCo. Ltd.",
+      "evidence": "We purchase substrates from IbidenCo. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
       "relation": "supplier",
       "revenue_pct": null
     },
     {
       "_ticker": "NVDA",
       "counterparty": "Nanya Technology Corporation",
-      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "evidence": "We purchase substrates from IbidenCo. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
       "relation": "supplier",
       "revenue_pct": null
     },
     {
       "_ticker": "NVDA",
       "counterparty": "Unimicron Technology Corporation",
-      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "evidence": "We purchase substrates from IbidenCo. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
       "relation": "supplier",
       "revenue_pct": null
     },
     {
       "_ticker": "NVDA",
       "counterparty": "Micron Technology",
-      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "evidence": "We purchase substrates from IbidenCo. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
       "relation": "supplier",
       "revenue_pct": null
     },
     {
       "_ticker": "NVDA",
       "counterparty": "Samsung Semiconductor, Inc.",
-      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "evidence": "We purchase substrates from IbidenCo. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
       "relation": "supplier",
       "revenue_pct": null
     },
     {
       "_ticker": "NVDA",
       "counterparty": "SK Hynix",
-      "evidence": "We purchase substrates from Ibiden Co. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
+      "evidence": "We purchase substrates from IbidenCo. Ltd., Nanya Technology Corporation, and Unimicron Technology Corporation, and memory from Micron Technology, Samsung Semiconductor, Inc., and SK Hynix.",
       "relation": "supplier",
       "revenue_pct": null
     },
@@ -178,6 +178,7 @@
       "_ticker": "NVDA",
       "counterparty": "BYD",
       "evidence": "We also utilize industry-leading contract manufacturers, or CMs, such as BYD and Quanta Computer, to manufacture some of our products for sale directly to end customers.",
+      "note": "the filing also writes this as 'BYD Auto Co. Ltd.' in the subcontractor sentence; one company, two forms",
       "relation": "supplier",
       "revenue_pct": null
     },
@@ -263,6 +264,46 @@
       "counterparty": "ZF",
       "evidence": "We also announced several new partnerships aimed at getting AI-powered cars, trucks and commercial vehicles on the road, including partnerships with Aurora, Autoliv, Baidu, Bosch, Continental, Mercedes-Benz, Uber, Volkswagen, Volvo, Toyota, and ZF.",
       "relation": "partner",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Advanced Semiconductor Engineering, Inc.",
+      "evidence": "We then utilize independent subcontractors, such as Advanced Semiconductor Engineering, Inc., BYD Auto Co. Ltd., Hon Hai Precision Industry Co., Ltd., JSI Logistics Ltd., King Yuan Electronics Co., Ltd., and Siliconware Precision Industries Company Ltd. to perform assembly, testing, and packaging of most of our products and platforms.",
+      "note": "missed on first pass: the condensing view dropped this sentence because WEAK lacked 'subcontractor'",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Hon Hai Precision Industry Co., Ltd.",
+      "evidence": "We then utilize independent subcontractors, such as Advanced Semiconductor Engineering, Inc., BYD Auto Co. Ltd., Hon Hai Precision Industry Co., Ltd., JSI Logistics Ltd., King Yuan Electronics Co., Ltd., and Siliconware Precision Industries Company Ltd. to perform assembly, testing, and packaging of most of our products and platforms.",
+      "note": "missed on first pass: the condensing view dropped this sentence because WEAK lacked 'subcontractor'",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "JSI Logistics Ltd.",
+      "evidence": "We then utilize independent subcontractors, such as Advanced Semiconductor Engineering, Inc., BYD Auto Co. Ltd., Hon Hai Precision Industry Co., Ltd., JSI Logistics Ltd., King Yuan Electronics Co., Ltd., and Siliconware Precision Industries Company Ltd. to perform assembly, testing, and packaging of most of our products and platforms.",
+      "note": "missed on first pass: the condensing view dropped this sentence because WEAK lacked 'subcontractor'",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "King Yuan Electronics Co., Ltd.",
+      "evidence": "We then utilize independent subcontractors, such as Advanced Semiconductor Engineering, Inc., BYD Auto Co. Ltd., Hon Hai Precision Industry Co., Ltd., JSI Logistics Ltd., King Yuan Electronics Co., Ltd., and Siliconware Precision Industries Company Ltd. to perform assembly, testing, and packaging of most of our products and platforms.",
+      "note": "missed on first pass: the condensing view dropped this sentence because WEAK lacked 'subcontractor'",
+      "relation": "supplier",
+      "revenue_pct": null
+    },
+    {
+      "_ticker": "NVDA",
+      "counterparty": "Siliconware Precision Industries Company Ltd.",
+      "evidence": "We then utilize independent subcontractors, such as Advanced Semiconductor Engineering, Inc., BYD Auto Co. Ltd., Hon Hai Precision Industry Co., Ltd., JSI Logistics Ltd., King Yuan Electronics Co., Ltd., and Siliconware Precision Industries Company Ltd. to perform assembly, testing, and packaging of most of our products and platforms.",
+      "note": "missed on first pass: the condensing view dropped this sentence because WEAK lacked 'subcontractor'",
+      "relation": "supplier",
       "revenue_pct": null
     }
   ],

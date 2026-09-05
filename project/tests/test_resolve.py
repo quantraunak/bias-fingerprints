@@ -66,6 +66,16 @@ def test_dotted_acronym_suffix_is_stripped():
     assert resolve.normalize("Fiat S.p.A.") == "fiat"
 
 
+def test_parenthetical_short_form_is_stripped():
+    """A filing introduces a short form on first mention and drops it after.
+    Keeping it split one company into two nodes, and scored a correct extraction
+    as both a false positive and a false negative at once."""
+    assert resolve.normalize("European Aeronautic Defence and Space Company (EADS)") == \
+           resolve.normalize("European Aeronautic Defence and Space Company")
+    assert resolve.normalize('Tianjin Haiguang Advanced Technology Investment Co., Ltd. ("THATIC")') == \
+           resolve.normalize("Tianjin Haiguang Advanced Technology Investment Co., Ltd.")
+
+
 def test_state_of_incorporation_marker_is_stripped():
     assert resolve.normalize("NORTHROP GRUMMAN CORP /DE/") == "northrop grumman"
 
@@ -120,3 +130,24 @@ def test_government_bodies_do_not_resolve(lookup):
     resolution is the stage that has to refuse them."""
     for name in ["U.S. Army", "Federal Reserve Board", "U.S. Government"]:
         assert resolve.resolve_one(name, lookup)[0] is None, name
+
+
+def test_anonymous_references_are_structural_not_prefixed():
+    """A prefix rule cannot separate "one customer" from "Single Touch Systems".
+
+    The first version rejected any name starting with a determiner or ranking
+    adjective, which also rejected real registrants beginning with "single",
+    "primary" or "top". What actually distinguishes the two is that every token
+    of an anonymous reference is a quantifier, a ranking word or a role noun.
+    """
+    from src.graph import extract
+
+    for anonymous in ["one customer", "two customers", "top three customers",
+                      "a major distributor", "our largest customer", "Customer A",
+                      "certain suppliers", "third parties"]:
+        assert extract.is_anonymous(anonymous), anonymous
+
+    for real in ["Intel Corporation", "Boeing", "Single Touch Systems",
+                 "Primary Health Properties", "Advanced Semiconductor Engineering, Inc.",
+                 "Hon Hai Precision Industry Co., Ltd."]:
+        assert not extract.is_anonymous(real), real

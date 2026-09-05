@@ -24,3 +24,5 @@ under a stated rule, not on taste.
 | BWA 2016 | BERU Diesel, Remy International | acquisitions |
 | FLEX 2010 | Solectron | acquisition, 2007 |
 | FLEX 2010 | Nortel | named as a customer, but every mention is a pre-bankruptcy claims settlement; not live on the filing date (rule 6, A4) |
+| NVDA 2018 | Tesla | NVIDIA's own product line (Tesla V100 GPU accelerators), not the car company. Resolves to TSLA, so it is a live trap for any extractor keying on capitalised names |
+| FSLR 2022 | Dell | executive biography (A3) |

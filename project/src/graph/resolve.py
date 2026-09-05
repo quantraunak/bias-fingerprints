@@ -109,10 +109,20 @@ def load_reference(user_agent: str, force: bool = False) -> pd.DataFrame:
 # counterparty lost to a tokenisation order.
 DOTTED_ACRONYM = re.compile(r"\b(?:[A-Za-z]\.){2,}")
 
+# Filings introduce a short form the first time they name a counterparty --
+# `European Aeronautic Defence and Space Company (EADS)`, `Tianjin Haiguang
+# Advanced Technology Investment Co., Ltd. ("THATIC")`. An extractor quoting the
+# name as written carries the parenthetical; a second mention of the same
+# company does not. Left in, the two normalise differently and one company
+# becomes two nodes -- which also scores a correct extraction as simultaneously
+# a false positive and a false negative against an annotation that omitted it.
+SHORT_FORM = re.compile(r"[(\[][^)\]]{1,40}[)\]]|[\u201c\"][^\u201d\"]{1,40}[\u201d\"]")
+
 
 def normalize(name: str) -> str:
     """Lowercase, strip punctuation, drop corporate suffixes and filler."""
-    text = STATE_MARKER.sub(" ", str(name))
+    text = SHORT_FORM.sub(" ", str(name))
+    text = STATE_MARKER.sub(" ", text)
     text = DOTTED_ACRONYM.sub(lambda m: m.group().replace(".", "") + " ", text)
     text = PUNCTUATION.sub(" ", text.lower())
     text = WHITESPACE.sub(" ", text).strip()

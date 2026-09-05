@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd  # noqa: E402
 
 from src.config import Config, PROCESSED  # noqa: E402
-from src.graph import extract, resolve  # noqa: E402
+from src.graph import evaluate, extract, resolve  # noqa: E402
 
 DIR = PROCESSED / "gold_candidates"
 WORK = PROCESSED / "gold_work"
@@ -29,9 +29,11 @@ def main() -> None:
     config = Config.load("configs/default.yaml")
     lookup = resolve.build_lookup(resolve.load_reference(config.data.sec_user_agent))
 
-    gold: dict[str, list[dict]] = {}
-    for path in sorted(WORK.glob("*.json")):
-        gold.update(json.loads(path.read_text()))
+    # Read the canonical benchmark, not the per-batch drafts. The scorer loads
+    # this file, and a checker reading a different copy validates a set nobody
+    # is scored against -- which is how five NVIDIA suppliers were added to the
+    # benchmark and reported as absent from it in the same run.
+    gold = evaluate.load_gold()
 
     manifest = {e["accession"]: e for e in json.loads((DIR / "_manifest.json").read_text())}
     bad, rows = [], []

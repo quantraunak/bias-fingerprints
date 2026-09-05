@@ -125,12 +125,57 @@ WHITESPACE = re.compile(r"\s+")
 
 # Anonymous references the model is told to reject. Checked again here because a
 # prompt rule is a request, not a guarantee, and this is cheap.
-ANONYMOUS = re.compile(
-    r"^(customer|supplier|client|vendor|distributor|reseller)\s*[a-z0-9]?$"
-    r"|^(a|an|our|the|certain|two|three|several|various|other|major|largest|significant|key|primary)\b"
-    r"|^(customers|suppliers|retailers|oems|resellers|distributors|wholesalers|government agencies|third parties)$",
-    re.I,
-)
+# Determiners and quantifiers that can open an anonymous reference.
+_QUANTIFIER = {
+    "a", "an", "the", "our", "its", "their", "certain", "some", "any", "each",
+    "every", "another", "other", "several", "various", "numerous", "many",
+    "most", "all", "both", "one", "two", "three", "four", "five", "six",
+    "seven", "eight", "nine", "ten", "few", "multiple",
+}
+# Adjectives filings use to rank an unnamed counterparty.
+_RANKING = {
+    "major", "largest", "large", "significant", "key", "primary", "principal",
+    "main", "top", "leading", "biggest", "important", "single", "sole", "small",
+    "smaller", "new", "existing", "current", "former", "third", "party",
+    "third-party", "unnamed", "anonymous",
+}
+# The role a counterparty plays, with no identity attached.
+_ROLE = {
+    "customer", "customers", "supplier", "suppliers", "client", "clients",
+    "vendor", "vendors", "distributor", "distributors", "reseller", "resellers",
+    "licensee", "licensees", "partner", "partners", "manufacturer",
+    "manufacturers", "subcontractor", "subcontractors", "oem", "oems", "odm",
+    "odms", "foundry", "foundries", "retailer", "retailers", "wholesaler",
+    "wholesalers", "contractor", "contractors", "agency", "agencies",
+    "parties", "party", "entity", "entities", "user", "users", "consumer",
+    "consumers", "buyer", "buyers", "purchaser", "purchasers",
+}
+
+# "Customer A", "Supplier 1" -- a role noun plus a placeholder label.
+_LABELLED = re.compile(r"^(customer|supplier|client|vendor|distributor|reseller)\s*[a-z0-9]{0,2}$", re.I)
+
+
+def is_anonymous(name: str) -> bool:
+    """Does this name describe a role rather than identify a company?
+
+    A prefix rule was the first attempt and cannot work: rejecting anything
+    starting with "single", "primary" or "top" also rejects Single Touch
+    Systems and Primary Health Properties, which are real registrants.
+
+    What actually distinguishes "one customer" from "Single Touch Systems" is
+    that every token of the former is a quantifier, a ranking adjective or a
+    role noun, and none of it identifies anybody. So the test is structural: the
+    name is anonymous when it carries a role noun and contains nothing else.
+    """
+    cleaned = re.sub(r"[^\w\s-]", " ", name.lower())
+    tokens = [t for t in cleaned.split() if t]
+    if not tokens:
+        return True
+    if _LABELLED.match(name.strip()):
+        return True
+    if not any(t in _ROLE for t in tokens):
+        return False
+    return all(t in _QUANTIFIER or t in _RANKING or t in _ROLE for t in tokens)
 
 
 PUNCT = re.compile(r"[^\w\s]")
@@ -207,7 +252,7 @@ def validate(links: list[dict], passages: list[str]) -> tuple[list[dict], dict]:
         if not name or len(name) < 2:
             rejected["empty_name"] += 1
             continue
-        if ANONYMOUS.match(name):
+        if is_anonymous(name):
             rejected["anonymous"] += 1
             continue
         evidence = _normalise(link.get("evidence") or "")

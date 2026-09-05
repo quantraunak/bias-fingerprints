@@ -37,10 +37,16 @@ STRONG = re.compile(
     re.I,
 )
 
+# Outsourced-manufacturing vocabulary belongs here and was missing. NVIDIA names
+# six of its assembly and test suppliers in a sentence built on "subcontractors"
+# and no other relationship word -- Advanced Semiconductor Engineering, Hon Hai,
+# Siliconware and three more. Without these terms the sentence scores zero.
 WEAK = re.compile(
     r"\bcustomers?\b|\bsuppliers?\b|\bvendors?\b|\bresellers?\b|\bdistributors?\b"
     r"|\blicensees?\b|\bpartners?\b|\bpurchases?\s+from\b|\bsells?\s+to\b"
-    r"|\bsupplied\s+by\b|\bdepend(s|ent)?\s+(up)?on\b|\brel(y|ies|iant)\s+(up)?on\b",
+    r"|\bsupplied\s+by\b|\bdepend(s|ent)?\s+(up)?on\b|\brel(y|ies|iant)\s+(up)?on\b"
+    r"|\bsubcontractors?\b|\bcontract\s+manufactur|\bfoundr(y|ies)\b|\boutsourc"
+    r"|\bassembl(y|ers?)\b|\bfabricat|\bmanufactured?\s+(for|by)\b|\bsource[ds]?\s+from\b",
     re.I,
 )
 
