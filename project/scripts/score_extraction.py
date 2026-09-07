@@ -27,15 +27,19 @@ from src.graph import evaluate, extract, filings, local_model, passages, resolve
 # Caching each response keyed by (model, filing) makes a kill cost only the
 # filing in flight, so a long scoring run is resumed rather than restarted.
 CACHE = PROCESSED / "extract_cache"
+TIMINGS: list[float] = []
 
 
 def cached_generate(model: str, accession: str, system: str, prompt: str, schema: dict):
     path = CACHE / model.replace(":", "_") / f"{accession}.json"
     if path.exists():
-        return json.loads(path.read_text())["text"], True
+        payload = json.loads(path.read_text())
+        TIMINGS.append(payload.get("seconds", 0.0))
+        return payload["text"], True
     response = local_model.generate(system, prompt, schema, model=model, timeout=1800)
     if not response.ok:
         return None, False
+    TIMINGS.append(response.seconds)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"text": response.text, "seconds": response.seconds}))
     return response.text, False
@@ -83,6 +87,13 @@ def main() -> None:
     reference = resolve.load_reference(config.data.sec_user_agent)
     lookup = resolve.build_lookup(reference)
     frame, agg = evaluate.score(predicted, gold, lookup)
+    # Throughput matters as much as quality: the corpus is 4,895 filings, so a
+    # model that scores higher and runs six times slower can still be the wrong
+    # choice. Timings come from the cache, so a resumed run still reports them.
+    if TIMINGS:
+        mean = sum(TIMINGS) / len(TIMINGS)
+        print(f"throughput  {mean:.0f}s per filing"
+              f"   corpus of 4,895 filings ~= {mean * 4895 / 3600:.0f}h")
 
     print(f"\nprecision {agg['precision']}   recall {agg['recall']}   f1 {agg['f1']}")
     print(f"  tp={agg['true_positive']}  fp={agg['false_positive']}  fn={agg['false_negative']}")
