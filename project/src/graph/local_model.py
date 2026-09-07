@@ -47,9 +47,16 @@ def generate(
     model: str = DEFAULT_MODEL,
     timeout: float = 600.0,
     retries: int = 2,
+    think: bool | None = None,
 ) -> Response:
-    body = json.dumps(
-        {
+    """Extract with a local model. `think` disables reasoning where supported.
+
+    Qwen 3 reasons before answering by default, and on this task most of the
+    270 seconds a filing costs is spent there rather than on the extraction
+    itself. Whether that reasoning earns its keep is a measurable question, not
+    an assumption, so it is a parameter and both settings get benchmarked.
+    """
+    payload = {
             "model": model,
             "system": system,
             "prompt": prompt,
@@ -59,8 +66,10 @@ def generate(
             # variance here shows up as graph edges that appear and disappear
             # between runs, which would make the backtest irreproducible.
             "options": {"temperature": 0, "num_ctx": CONTEXT_TOKENS},
-        }
-    ).encode()
+    }
+    if think is not None:
+        payload["think"] = think
+    body = json.dumps(payload).encode()
 
     last_error = None
     for attempt in range(retries + 1):

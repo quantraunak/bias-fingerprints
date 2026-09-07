@@ -30,13 +30,18 @@ CACHE = PROCESSED / "extract_cache"
 TIMINGS: list[float] = []
 
 
-def cached_generate(model: str, accession: str, system: str, prompt: str, schema: dict):
-    path = CACHE / model.replace(":", "_") / f"{accession}.json"
+def cached_generate(model: str, accession: str, system: str, prompt: str, schema: dict,
+                    think: bool | None = None):
+    # Thinking is part of the configuration under test, so it is part of the
+    # cache key. Sharing one key across both settings would silently score
+    # thinking-on responses as though thinking were off.
+    suffix = "" if think is None else ("_nothink" if think is False else "_think")
+    path = CACHE / (model.replace(":", "_") + suffix) / f"{accession}.json"
     if path.exists():
         payload = json.loads(path.read_text())
         TIMINGS.append(payload.get("seconds", 0.0))
         return payload["text"], True
-    response = local_model.generate(system, prompt, schema, model=model, timeout=1800)
+    response = local_model.generate(system, prompt, schema, model=model, timeout=1800, think=think)
     if not response.ok:
         return None, False
     TIMINGS.append(response.seconds)
@@ -49,6 +54,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--model", default=local_model.DEFAULT_MODEL)
+    parser.add_argument("--no-think", dest="think", action="store_const", const=False, default=None,
+                        help="disable reasoning on models that support it")
     args = parser.parse_args()
 
     config = Config.load(args.config)
@@ -66,7 +73,7 @@ def main() -> None:
         reply, cache_hit = cached_generate(
             args.model, accession, extract.SYSTEM,
             extract.user_prompt(row.ticker, row.ticker, str(pd.Timestamp(row.filed).date()), selected),
-            extract.Extraction.model_json_schema(),
+            extract.Extraction.model_json_schema(), think=args.think,
         )
         if reply is None:
             print(f"  {row.ticker}: extraction failed")
