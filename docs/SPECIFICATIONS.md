@@ -22,12 +22,12 @@ the log starts before the first test rather than being reconstructed after it.
 
 | # | Specification | Decided on | Outcome |
 |---|---|---|---|
-| E1 | Local Llama 3 8B, JSON-schema constrained decoding | cost | Precision **0.22**, recall **0.95** on the 10-filing annotated sample. Recall is adequate; precision is not. |
+| E1 | Local Llama 3 8B, JSON-schema constrained decoding | cost | Precision **0.569**, recall **0.745**, F1 0.646 on benchmark v2. (The 0.22 first reported was a v1 measurement artifact, not a property of the model.) |
 | E2 | Prompt v1 — named counterparties, verbatim evidence, direction from the filer | pre-registration | Superseded. Correctly excluded anonymous references; silent on the failure modes E1 actually produced. |
 | E3 | Prompt v2 — adds explicit rejection of executive biographies, one-off transactions (acquisitions, IP sales), litigation, regulators and government bodies, financial boilerplate, and geographies; states direction as the flow of goods | four observed E1 failure classes | Current. Not yet scored. |
 | E4 | Claude Opus 5 via the Batch API | E1 precision | Built, not yet run. |
 
-| E5 | Qwen 3 32B, run locally | E4 needs API credit this project does not have | Built, scoring. Free, ~35s/filing on an M3 Max. |
+| E5 | Qwen 3 32B, run locally | E4 needs API credit this project does not have | **Precision 0.900, recall 0.818, F1 0.857** on benchmark v2, against E1's 0.569 / 0.745 / 0.646. Free, but 152s and 22GB per filing. |
 
 Every extraction specification is scored against the same annotated sample, so
 the numbers are comparable.
