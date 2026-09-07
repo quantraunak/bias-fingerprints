@@ -98,7 +98,7 @@ def main() -> None:
 
     processed, began = 0, time.time()
     for row in todo.itertuples():
-        if args.limit and processed >= args.limit:
+        if args.limit is not None and processed >= args.limit:
             break
         source = index.loc[row.accession]
         selected = passages.select(Path(source.path).read_text(encoding="utf-8", errors="ignore"))

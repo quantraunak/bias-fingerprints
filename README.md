@@ -1,8 +1,54 @@
-# Point-in-Time US Equity Factor Research
+# Point-in-Time US Equity Research
 
-A cross-sectional equity signal built on reconstructed point-in-time index membership
-and SEC XBRL fundamentals joined on filing date, with a purged walk-forward evaluation
-that runs before any portfolio is constructed.
+Two studies on one point-in-time data substrate: prices and index membership that
+know what was true on each historical date, and SEC filings keyed to the day they
+were filed rather than the period they describe.
+
+## What is in here
+
+**1. Economic links from filing text — in progress, no result yet.**
+
+Companies name each other in their 10-Ks. *"Intel is one of our most significant
+customers."* *"We purchase substrates from Ibiden and Unimicron."* Nobody sells a
+map of those disclosures: the vendor supply-chain products cover the large,
+obvious links, and the academic text-based networks measure product-description
+*similarity* rather than stated relationships.
+
+The claim under test is that returns propagate along those links with a delay,
+and that the delay is longest on links no database publishes — because those are
+the ones no screen surfaces and no risk model neutralises.
+
+The hypothesis, its falsification table and its placebo test were
+[written and committed before the extraction corpus existed](docs/HYPOTHESIS.md),
+so the design cannot be reverse-engineered from the result. Every choice made
+since is logged in [`docs/SPECIFICATIONS.md`](docs/SPECIFICATIONS.md), whose
+signal section is deliberately empty: no forward return has been regressed on any
+graph-derived quantity yet.
+
+Status: 4,895 10-Ks on disk, extraction running locally over the 2,364 S&P 500
+filings. The graph and the signal are built and tested but have never been run on
+a full corpus. If edge density does not reach the cross-section, the study stops
+at the coverage report, as the pre-registration commits it to.
+
+**2. A 22-factor long-short study — complete.**
+
+The cross-sectional signal below, and two findings that came out of auditing it:
+that a period-end join inflates measured factor IC by 59% and manufactures four
+spurious significances, and that conditioning on current index membership
+invents an illiquidity premium. Both in [`docs/BIAS.md`](docs/BIAS.md).
+
+**3. Shared infrastructure.** Point-in-time index membership from reconstructed
+spells, SEC XBRL keyed on filing date, an entity resolver from filing text to
+tickers, and a hand-annotated benchmark for relationship extraction with
+[auditable negatives](docs/gold_exclusions.md).
+
+---
+
+## The factor study
+
+A cross-sectional signal over 22 published factors, each signed to its published
+direction, evaluated on a purged and embargoed walk-forward before any portfolio
+is constructed.
 
 | | |
 |---|---|
@@ -11,7 +57,6 @@ that runs before any portfolio is constructed.
 | Decile spread | **68.1bp / month** (t = 3.08) |
 | Universe | 727 names, point-in-time membership, prices from 2004 |
 | Fundamentals | SEC EDGAR XBRL, 648 issuers, keyed on filing date, usable from 2010 |
-| Factors | 22, each signed to its published direction |
 
 The signal carries information. The section on
 [beta decomposition](#beta-decomposition) shows how much of it survives once the market
@@ -28,8 +73,6 @@ as twenty-two years of fundamentals. This is measured in
 [`docs/BIAS.md`](docs/BIAS.md).
 
 [**Results dashboard**](https://quantraunak.github.io/ls-multifactor-research/) · [Data notes](docs/DATA.md)
-
----
 
 ## Data
 
