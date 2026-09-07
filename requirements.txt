@@ -1,3 +1,6 @@
+# Pinned environment for reproducing the published runs.
+# For library use install the package instead: pip install -e ".[dev,prices,model,portfolio]"
+
 numpy==1.26.4
 pandas==2.2.3
 pyarrow==17.0.0

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pit-equity-research"
+version = "0.1.0"
+description = "Point-in-time US equity research: economic links from filing text, and a 22-factor study on the same substrate"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+  "pandas>=2.1",
+  "numpy>=1.26",
+  "pyarrow>=14",
+  "requests>=2.31",
+  "beautifulsoup4>=4.12",
+  "lxml>=5.0",
+  "pydantic>=2.5",
+  "PyYAML>=6.0",
+  "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+# Price history is fetched per user rather than redistributed: the source's
+# terms do not permit republishing it, which is also why `make dataset` ships
+# the SEC layer and the membership spells and stops there.
+prices = ["yfinance>=0.2"]
+model = ["lightgbm>=4.1", "scikit-learn>=1.4"]
+# Portfolio construction only. The factor and link studies run without a solver,
+# so the graph pipeline installs without pulling in cvxpy.
+portfolio = ["cvxpy>=1.5"]
+plots = ["matplotlib>=3.9", "quantstats>=0.0.62"]
+
+[tool.setuptools.packages.find]
+where = ["project"]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["project"]
+testpaths = ["project/tests"]
