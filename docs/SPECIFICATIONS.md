@@ -74,9 +74,25 @@ re-filtering rather than re-reading.
 | A3 | A real relationship named only inside an executive biography (First Solar's 8point3 yieldco with SunPower) | **Exclude** | The biography rule has to be mechanical or it stops being a rule. A model cannot be expected to distinguish a true corporate fact inside a résumé from a false one, and the failure mode this guards against — Lucent, Ericsson, Medtronic, GE as counterparties — is the dominant source of 8B false positives. |
 | A4 | A historical agreement surfaced for an unrelated purpose (NVIDIA's 2000 Xbox agreement, cited in 2018 to explain a change-of-control provision) | **Exclude** | The filing offers no evidence the relationship is live on the filing date, and edge validity intervals start at the filing date. |
 
+## Graph
+
+| # | Specification | Decided on | Outcome |
+|---|---|---|---|
+| G1 | Edge validity from filing date to the issuer's next filing, capped at 550 days | how 10-Ks restate relationships annually | Current. Verified on 322 edges: no self-loops, no edge visible before its filing date, no malformed intervals. |
+| G2 | Edge weight = disclosed revenue share, else a confidence-graded prior | — | **Withdrawn as described.** Confidence is degenerate: Llama 3 returned "high" for 1,051 of 1,060 claims, Qwen 3 for all 74. The prior is a constant in practice. |
+| G3 | Edge weight = disclosed revenue share, else equal | G2's measurement | Current, and named accurately. Alternatives that would actually vary — repeated mention across filings, relation type — are unexplored. |
+
 ## Signal
 
 *Empty. No forward return has been regressed on any graph-derived quantity.*
+
+Blocking observation from G1: on the 197 filings extracted so far, only 17-38
+edges are active on any given date, covering 8-13 source firms against a
+tradable cross-section of roughly 450. That is a pair trade, not a
+cross-sectional signal, and it is the condition `PILOT_FINDINGS.md` warned
+about. The corpus run covers 2,364 filings, twelve times as many, so the
+question is whether density scales with it. If it does not, the study stops at
+the coverage report exactly as the pre-registration says it should.
 
 When the first entry lands here, the falsification table in `HYPOTHESIS.md`
 applies as written, and the reported threshold is deflated by the number of

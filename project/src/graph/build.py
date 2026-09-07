@@ -67,12 +67,22 @@ def edges(resolved: pd.DataFrame, max_age_days: int = MAX_AGE_DAYS) -> pd.DataFr
 
 
 def _weight(frame: pd.DataFrame) -> pd.Series:
-    """Edge weight: disclosed revenue share where stated, else a confidence prior.
+    """Edge weight: disclosed revenue share where stated, else a flat constant.
 
     Revenue share is the only quantitative measure of link strength a filing
-    offers, and it is disclosed for a minority of edges. Filling the rest with a
-    confidence-graded constant keeps the two on one scale without inventing
-    precision that the text does not support.
+    offers, and it is disclosed for very few edges -- 16 of 1,060 claims from
+    the 8B model, 10 of 74 from the 32B.
+
+    The rest were meant to be graded by the model's stated confidence. That
+    turns out to carry no information: Llama 3 returned "high" for 1,051 of
+    1,060 claims and Qwen 3 for all 74, so the prior is a constant 0.10 in
+    practice and the grading is decorative. The scheme is therefore an equal
+    weighting with a disclosed-percentage override, and it is described that way
+    rather than dressed up as a confidence model.
+
+    Whether a weight that varies would help at all is an open specification
+    question -- repeated mention across filings and relation type are the
+    obvious candidates -- and it is logged rather than silently chosen here.
     """
     stated = pd.to_numeric(frame["revenue_pct"], errors="coerce") / 100.0
     prior = frame["confidence"].map({"high": 0.10, "medium": 0.06, "low": 0.03}).fillna(0.03)
