@@ -14,9 +14,20 @@ map of those disclosures: the vendor supply-chain products cover the large,
 obvious links, and the academic text-based networks measure product-description
 *similarity* rather than stated relationships.
 
-The claim under test is that returns propagate along those links with a delay,
-and that the delay is longest on links no database publishes — because those are
-the ones no screen surfaces and no risk model neutralises.
+Returns are known to propagate along supply-chain links with a delay, and the
+effect is known to concentrate where investors pay least attention. That is
+established literature, not a claim of this repository — see the
+[prior-work note](docs/HYPOTHESIS.md#prior-work-checked-2026-09-07--after-the-design-was-fixed-before-any-result).
+
+What does not exist publicly is the graph itself as a *point-in-time historical
+series*. The nearest published work extracts firm networks from filings for 42
+firms in a single fiscal year. This builds 160 issuers across 2012–2025, with
+every edge keyed to the date it was disclosed and a validity interval, so the
+graph can be asked what it looked like on any past date.
+
+The return test is therefore a **validation, not a discovery**: recovering the
+published effect on an independently built graph is evidence the graph measures
+what it claims to.
 
 The hypothesis, its falsification table and its placebo test were
 [written and committed before the extraction corpus existed](docs/HYPOTHESIS.md),

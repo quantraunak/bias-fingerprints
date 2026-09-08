@@ -27,7 +27,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd  # noqa: E402
 
 from src.config import PROCESSED  # noqa: E402
-from src.graph import extract, filings, local_model, passages  # noqa: E402
+from src.graph import build, extract, filings, local_model, passages  # noqa: E402
+
+
+def build_max_age() -> int:
+    return build.MAX_AGE_DAYS
 
 QUEUE = PROCESSED / "extract_queue.parquet"
 CACHE = PROCESSED / "extract_cache"
@@ -69,6 +73,12 @@ def main() -> None:
     parser.add_argument("--no-think", dest="think", action="store_const", const=False, default=None)
     parser.add_argument("--sp500", action="store_true", help="restrict to S&P 500 issuers")
     parser.add_argument("--limit", type=int, help="stop after this many filings this invocation")
+    parser.add_argument("--num-predict", type=int, default=None,
+                        help="token ceiling per filing; bounds worst-case runtime")
+    parser.add_argument("--since", default=None,
+                        help="skip filings before this date. Edges expire after "
+                             f"{build_max_age()} days, so a filing older than that before the "
+                             "evaluation window contributes nothing to it")
     parser.add_argument("--rebuild-only", action="store_true")
     args = parser.parse_args()
 
@@ -86,7 +96,9 @@ def main() -> None:
     queue = queue[queue.passes]
     if args.sp500:
         queue = queue[queue.sp500]
-    done = {p.stem for p in directory.glob("*.json")}
+    if args.since:
+        queue = queue[pd.to_datetime(queue.filed) >= pd.Timestamp(args.since)]
+    done = {p.stem for p in directory.glob("*.json")} | {p.stem for p in directory.glob("*.truncated")}
     todo = queue[~queue.accession.isin(done)]
 
     print(f"queue {len(queue):,}   done {len(done):,}   remaining {len(todo):,}", flush=True)
@@ -110,9 +122,18 @@ def main() -> None:
                                 str(pd.Timestamp(source.filed).date()), selected),
             extract.Extraction.model_json_schema(),
             model=args.model, timeout=3600, think=args.think,
+            **({"num_predict": args.num_predict} if args.num_predict else {}),
         )
         if not response.ok:
             print(f"  {source.ticker} {row.accession}: {response.error}", flush=True)
+            continue
+        if response.truncated:
+            # Recorded, not silently dropped: the skip rate is part of coverage
+            # and has to appear in the report rather than as a quiet gap.
+            (directory / f"{row.accession}.truncated").write_text(str(response.eval_count))
+            print(f"  {source.ticker:6} TRUNCATED at {response.eval_count} tokens, skipped",
+                  flush=True)
+            processed += 1
             continue
         (directory / f"{row.accession}.json").write_text(
             json.dumps({"text": response.text, "seconds": response.seconds})
@@ -121,7 +142,7 @@ def main() -> None:
         rate = (time.time() - began) / processed
         left = (len(todo) - processed) * rate / 3600
         print(f"  [{len(done)+processed:>5}/{len(queue):,}] {source.ticker:6} "
-              f"{response.seconds:>4.0f}s   ~{left:.1f}h remaining", flush=True)
+              f"{response.seconds:>4.0f}s {response.eval_count:>5}tok  ~{left:.1f}h left", flush=True)
 
     # Exit non-zero while work remains, so a shell `until` loop keeps restarting.
     sys.exit(0 if processed >= len(todo) else 1)

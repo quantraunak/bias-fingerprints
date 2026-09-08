@@ -102,3 +102,43 @@ is the finding, and it is reported with the same prominence a positive result
 would get. The infrastructure — a point-in-time economic-link graph built from
 unstructured filings, with measured extraction error — stands on its own
 regardless of which way the test comes out.
+
+
+---
+
+## Prior work, checked 2026-09-07 — after the design was fixed, before any result
+
+This section is appended rather than woven in, so the record shows the
+pre-registration above was written first and the literature was checked later.
+That ordering is a failure of process: it should have happened before the corpus
+was built, and it materially changes what this study can claim.
+
+**The core effect is established.** Customer-supplier momentum spillover is
+long-documented, with hedge alphas around 0.37-0.63% monthly. Two of this
+document's specific predictions are also already reported in that literature:
+that the effect is amplified where investors pay less attention to the linked
+counterparty, and that predictive information extends beyond direct links to
+non-Tier-1 and multi-hop connections. The second-order prediction below is
+therefore a replication target, not a discovery.
+
+**The method has a recent paper.** *LLM Latent Edge Measurement* (arXiv
+2607.15640, July 2026) extracts economic relationships from SEC filings with an
+LLM and builds weighted directed firm networks with verbatim evidence. It is
+narrower than this study in the dimension that matters here: 42 Nasdaq-100
+firms, a single fiscal year, no point-in-time history, and it makes no
+return-predictability claims. *Supply Chain Propagation of Textual Signals*
+(arXiv 2606.29290) tests returns over 255 S&P 500 firms, 2011-2025, but
+propagates LLM embeddings over an existing supply-chain graph rather than
+extracting the graph from prose.
+
+**What this leaves.** Not an alpha discovery. What does not appear to exist
+publicly is a *point-in-time historical* link graph built from filing prose at
+this scale -- 160 issuers over 2012-2025, edges keyed to disclosure date with
+validity intervals -- and a released benchmark for relationship extraction from
+filings with auditable negatives.
+
+**Consequence for the test below.** It is demoted from discovery to validation.
+Recovering the published spillover effect on an independently constructed graph
+is evidence the graph measures what it claims to. Failing to recover it is
+evidence about the graph, not about the market. The falsification table still
+governs, and it is now read in that light.

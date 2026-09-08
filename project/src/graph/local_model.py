@@ -23,6 +23,15 @@ ENDPOINT = "http://localhost:11434/api/generate"
 DEFAULT_MODEL = "llama3:latest"
 CONTEXT_TOKENS = 8192
 
+# Generation has to be bounded or a single filing can consume hours. Measured
+# over the first 37 corpus filings: median 100s, mean 440s, worst 7,005s -- and
+# the worst one produced 3,715 characters of JSON while an 18-minute one
+# produced 16,763. Time does not track output; it tracks how long the model
+# ruminates before answering, and that is unbounded. A token ceiling is the only
+# reliable bound, since the HTTP timeout is per-read and never fires on a model
+# that is still slowly emitting.
+DEFAULT_NUM_PREDICT = 6000
+
 
 @dataclass(frozen=True)
 class Response:
@@ -30,6 +39,8 @@ class Response:
     seconds: float
     ok: bool
     error: str | None = None
+    eval_count: int = 0
+    truncated: bool = False
 
 
 def available(timeout: float = 5.0) -> bool:
@@ -48,6 +59,7 @@ def generate(
     timeout: float = 600.0,
     retries: int = 2,
     think: bool | None = None,
+    num_predict: int = DEFAULT_NUM_PREDICT,
 ) -> Response:
     """Extract with a local model. `think` disables reasoning where supported.
 
@@ -65,7 +77,8 @@ def generate(
             # Temperature 0: this is extraction, not generation. Any sampling
             # variance here shows up as graph edges that appear and disappear
             # between runs, which would make the backtest irreproducible.
-            "options": {"temperature": 0, "num_ctx": CONTEXT_TOKENS},
+            "options": {"temperature": 0, "num_ctx": CONTEXT_TOKENS,
+                        "num_predict": num_predict},
     }
     if think is not None:
         payload["think"] = think
@@ -79,7 +92,18 @@ def generate(
                 ENDPOINT, data=body, headers={"Content-Type": "application/json"}
             )
             payload = json.loads(urllib.request.urlopen(request, timeout=timeout).read())
-            return Response(text=payload.get("response", ""), seconds=time.time() - start, ok=True)
+            used = int(payload.get("eval_count", 0))
+            return Response(
+                text=payload.get("response", ""),
+                seconds=time.time() - start,
+                ok=True,
+                eval_count=used,
+                # Hitting the ceiling means the JSON is cut mid-structure. The
+                # claim is dropped rather than half-parsed: a truncated
+                # extraction is a filing we did not read, not a filing with
+                # fewer links.
+                truncated=used >= num_predict,
+            )
         except Exception as exc:  # noqa: BLE001 - surfaced in the returned record
             last_error = f"{type(exc).__name__}: {exc}"
             if attempt < retries:
