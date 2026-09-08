@@ -93,8 +93,23 @@ def generate(
             )
             payload = json.loads(urllib.request.urlopen(request, timeout=timeout).read())
             used = int(payload.get("eval_count", 0))
+            # Ollama files a hybrid reasoning model's whole structured answer
+            # under `thinking` and returns an empty `response` unless `think` is
+            # explicitly False. Reading `response` alone turned Qwen 3 30B-A3B
+            # into ten blank extractions that cached as legitimate zero-link
+            # filings -- a silent failure indistinguishable from a model that
+            # found nothing. Recover the answer, and never return a blank while
+            # the model demonstrably said something.
+            answer = payload.get("response", "") or ""
+            reasoning = payload.get("thinking", "") or ""
+            if not answer.strip() and reasoning.strip():
+                answer = reasoning
+            if not answer.strip() and used > 0:
+                raise ValueError(
+                    f"{model} generated {used} tokens but returned no readable text"
+                )
             return Response(
-                text=payload.get("response", ""),
+                text=answer,
                 seconds=time.time() - start,
                 ok=True,
                 eval_count=used,
