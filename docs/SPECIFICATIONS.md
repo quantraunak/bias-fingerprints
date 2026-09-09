@@ -31,6 +31,7 @@ the log starts before the first test rather than being reconstructed after it.
 | E7 | `num_predict` 6000 inside an 8192-token context | — | **Withdrawn.** A ~3,400-token prompt plus a 6,000-token budget exceeds the window, so long reasoning traces trigger context shift and re-prefill. Median 116s, mean 781s, worst filing 11,843s; the eight slowest of 93 filings consumed 62% of all wall time. |
 | E8 | Qwen 3 30B-A3B (mixture of experts, ~3B active), `think=False` | 32B decode is memory-bandwidth-bound; a 30B MoE reads ~1/10th the weights per token | **Rejected on quality, at a bar fixed before the measurement.** Precision 0.824, recall 0.764, F1 0.792 against E5's 0.900 / 0.818 / 0.857 — below the 0.82 threshold set in advance. But **13s per filing against 270s**, a 20x speedup that turns the corpus from ~13 days into ~7 hours. Loses on long enumerations: 14 of NVIDIA's 24 links, dropping the whole outsourced-assembly list (ASE, Hon Hai, Siliconware, King Yuan, Unimicron, Ibiden, Nanya). Beats E5 on Boeing, 12 true positives against 6. |
 | E9 | Qwen 3 30B-A3B with reasoning enabled, recovered from Ollama's `thinking` field | E6 measured reasoning as worth 0.30 F1 on the 32B; E8's gap to the bar was 0.065 | **Rejected. Byte-identical to E8** — precision 0.824, recall 0.764, F1 0.792, the same 42/9/13 split and the same missed and spurious lists, from a separate cache key. Under schema-constrained decoding `think` only changes which field Ollama files the tokens under; `eval_count` is unchanged. The MoE has no reasoning mode to unlock on this task. |
+| E10 | Qwen 3 30B-A3B for the **corpus**, accepting F1 0.792 against E5's 0.857 | coverage, not precision, is the binding constraint on the signal test | **Current for the corpus run.** The pre-registered signal test cannot run on the E5 partial corpus: 163 filings give 35 source firms and a median of 4 names per date, and a cross-sectional rank correlation over 4 names is undefined. E10 covers 2,364 filings in ~8.5h at 13s/filing, projecting ~145 source firms. Edge noise attenuates a signal rather than biasing it, so trading 0.065 F1 for a 4x larger cross-section is the correct direction when the alternative is no test at all. The E5 graph remains the one reported for the released dataset. |
 
 Every extraction specification is scored against the same annotated sample, so
 the numbers are comparable.
@@ -63,6 +64,15 @@ output is retrieved at all, and `eval_count` is identical across `think` unset,
 `True` and `False` -- the flag changes which field Ollama files the tokens
 under, not how many are generated. The two findings share a flag name and
 nothing else.
+
+E10 is a deliberate departure from the 0.82 bar that rejected E8, and the
+reason is that the bar was set for the wrong purpose. 0.82 was chosen to decide
+which extractor builds the *released graph*, where a false edge is a permanent
+defect in a public artifact. The signal test asks a different question, and its
+failure mode is the opposite: missing edges make a real effect harder to detect,
+while a cross-section of four names makes any effect undetectable. Precision and
+coverage are not interchangeable, and which one binds depends on what the graph
+is for. The released dataset stays on E5.
 
 E9 ran that configuration and it changed nothing: the output is identical to
 E8's on all ten filings. Under schema-constrained decoding this model does not
