@@ -6,12 +6,12 @@
 
 ## Abstract
 
-Look-ahead and survivorship bias are known to inflate backtested performance,
-and the standard treatment of both is prescriptive: here is the error, here is
-how to avoid it in your own pipeline. That framing assumes the reader controls
-the code. The situation that recurs in practice is the opposite — an allocator
+Look-ahead and survivorship bias are known to inflate backtested performance.
+The standard treatment of both is prescriptive: it names the error and shows how
+to avoid it in your own pipeline. That framing assumes the reader controls the
+code. The situation that recurs in practice is the opposite. An allocator
 reads a manager's factor table, a researcher reads a published result, a desk
-evaluates a vendor's signal — and the biased artifact is visible while the
+evaluates a vendor's signal. In each case the biased artifact is visible and the
 pipeline that produced it is not.
 
 We measure what two common data-handling errors do to a twenty-two factor
@@ -20,14 +20,14 @@ else fixed. Joining fundamentals on fiscal period end rather than filing date
 inflates mean information coefficient by **59%** among the eleven factors that
 read a filed figure, and manufactures **four** t-statistics above 2.0 from
 factors that are insignificant under correct dating. Conditioning the universe on
-current index membership does not uniformly inflate: mean IC *falls* by 0.0043,
+current index membership does not uniformly inflate. Mean IC *falls* by 0.0043,
 while `amihud_illiquidity` flips sign and becomes significant (t: −1.11 → **+2.80**)
 and `turnover_1m` becomes significant with the wrong sign (t: −0.48 → **−2.53**).
 
 The two distortions are nearly orthogonal across the factor cross-section
 (correlation **−0.088**) and move value factors in opposite directions. Under
-dating bias, eleven price-and-volume factors are unchanged to machine precision —
-exactly, not approximately, because they never read a filed figure. We argue that
+dating bias, eleven price-and-volume factors are unchanged to machine precision, exactly
+rather than approximately, because they never read a filed figure. We argue that
 this structure makes the *pattern* of reported factor performance diagnostic of
 the underlying error, and we set out the conditions under which that inversion
 would be valid. Those conditions are not yet tested, and we say so.
@@ -43,7 +43,7 @@ That look-ahead bias inflates backtested returns has been known since Banz and
 Breen (1986). That survivorship bias does the same is textbook. Neither
 observation is a contribution, and this paper does not claim otherwise.
 
-What is less established is *how* each error distorts a factor study — which
+What is less established is *how* each error distorts a factor study: which
 factors move, by how much, and in which direction. This matters because the
 consumer of factor research is rarely in a position to audit the pipeline. A
 Sharpe ratio carries no information about which bug produced it. A cross-section
@@ -85,8 +85,8 @@ volume and membership.
 **Fundamentals.** SEC XBRL company facts, keyed on the date each figure was
 filed. Restatements resolve to the earliest filing. Cumulative cash-flow spans
 are differenced to true quarters. Rows whose filing date is an XBRL-adoption
-artifact — a period ending long before the filing that first reports it — are
-flagged rather than silently trusted.
+artifact, meaning a period ending long before the filing that first reports it,
+are flagged rather than silently trusted.
 
 **Factors.** Twenty-two published cross-sectional factors, each signed to its
 published direction, sector-neutralised and rank-normalised. Eleven read a filed
@@ -109,15 +109,15 @@ We compare three conventions, holding everything else fixed:
 
 | convention | assumption |
 |---|---|
-| **PIT** | visible the day the filing landed — correct |
-| **LAG45** | every company files 45 days after quarter end — common practice |
-| **NAIVE** | visible the instant the quarter closed — the error |
+| **PIT** | visible the day the filing landed, and correct |
+| **LAG45** | every company files 45 days after quarter end, which is common practice |
+| **NAIVE** | visible the instant the quarter closed, which is the error |
 
 ### 3.1 The controls hold exactly
 
 Eleven factors read no filed figure. Across all three conventions their IC is
-identical, with maximum absolute drift **0.0e+00** — exact equality in floating
-point, not a small number.
+identical, with maximum absolute drift **0.0e+00**. That is exact equality in
+floating point, not a small number.
 
 This is what licenses the rest of the section. It establishes that nothing in
 the harness responds to the filing calendar except the factors that must.
@@ -138,12 +138,12 @@ Among the eleven affected factors:
 | period-end join | **+59% of true IC** | 10 of 11 | **4 of 11** |
 
 The four manufactured significances are `earnings_yield`, `cash_flow_yield`,
-`roe` and `accruals` — each insignificant under correct dating and above t = 2.0
-under the period-end join.
+`roe` and `accruals`. Each is insignificant under correct dating and above
+t = 2.0 under the period-end join.
 
 The comparison between the two rows is the practical result. A fixed 45-day lag
-is wrong — it is right on average and wrong for every filing that arrives later
-than that — but it manufactures no false discoveries in this sample. The
+is wrong, being right on average and wrong for every filing that arrives later
+than that, but it manufactures no false discoveries in this sample. The
 period-end join manufactures four. The distinction between "approximately right"
 and "wrong" is the distinction between a bias and a bug.
 
@@ -159,7 +159,7 @@ panel conditions on index membership as of the end of the sample.
 
 ### 4.1 The dominant channel is not the one usually named
 
-Survivorship is normally described as dropping losers — the acquired, the
+Survivorship is normally described as dropping losers: the acquired, the
 bankrupt, the demoted. In index research that is the smaller half.
 
 Daily averages, 2010–2015:
@@ -167,8 +167,8 @@ Daily averages, 2010–2015:
 | | names/day | median $ volume | median market cap |
 |---|---|---|---|
 | genuine members | 386 | $95M | $10.1B |
-| wrongly **included** — not yet admitted | **203** | **$28M** | **$3.5B** |
-| wrongly **excluded** — later deleted | 88 | $54M | $5.3B |
+| wrongly **included**, not yet admitted | **203** | **$28M** | **$3.5B** |
+| wrongly **excluded**, later deleted | 88 | $54M | $5.3B |
 
 The biased panel wrongly includes more than twice as many names as it wrongly
 excludes, and the added names are roughly a third the size and a third the
@@ -192,7 +192,7 @@ improve. Two factors cross |t| = 2:
 | `vol_60d` | −0.0013 | −0.0234 | −0.08 | −1.49 |
 
 Illiquidity flips sign and becomes significant. In a survivorship-biased panel,
-being illiquid predicts returns — because the illiquid names in today's index are
+being illiquid predicts returns, because the illiquid names in today's index are
 precisely those that were small years ago and then grew into it. Turnover becomes
 significant with the wrong sign. The low-volatility anomaly inverts.
 
@@ -241,13 +241,13 @@ conditions would have to hold, and each is a gate rather than a caveat:
    sampling covariance of each shift vector must be estimated.
 3. **Separability under realistic noise.** With a study's true factor
    performance unknown and twenty-two dimensional, identification requires
-   structure — exclusion from the exact-zero constraint, and within-family
+   structure: exclusion from the exact-zero constraint, and within-family
    contrasts that absorb the unknown level. Whether the two errors remain
    separable at the noise level of a twelve-year study is an empirical question.
 4. **Calibration before application.** Any output must be a p-value or a
    posterior with a reference distribution behind it, never a bare label.
 
-We note that labelled data for (3) is free: biased panels are generated by the
+We note that labelled data for (3) is free. Biased panels are generated by the
 pipeline itself, so the inversion can be validated at scale without any external
 dataset or annotation.
 
@@ -268,8 +268,8 @@ dataset or annotation.
 - **Twenty-two factors.** A study reporting five gives a five-dimensional
   observation, and the exclusion constraint does not apply at all if none of them
   are price-only.
-- **The inversion in §5.1 is untested.** Sections 3 and 4 are measurements;
-  §5.1 is a proposal.
+- **The inversion in §5.1 is untested.** Sections 3 and 4 are measurements.
+  Section 5.1 is a proposal.
 
 ---
 
