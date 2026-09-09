@@ -4,6 +4,15 @@ Two studies on one point-in-time data substrate: prices and index membership tha
 know what was true on each historical date, and SEC filings keyed to the day they
 were filed rather than the period they describe.
 
+**Paper: [Two Bugs, Two Fingerprints](paper/bias_fingerprints.pdf)** (7pp, LaTeX source
+in [`paper/`](paper/)). Measures what two common data-handling errors do to the same
+22-factor study, holding everything else fixed. A period-end join inflates mean IC by
+**59%** and manufactures **four** false discoveries while leaving price-only factors
+unchanged to machine precision. Current-membership conditioning does not inflate at all:
+it *relocates*, flipping `amihud_illiquidity` from t = -1.11 to **+2.80** and inverting
+the low-volatility anomaly. The two distortions correlate at **-0.088**, which is the
+observation the paper is built on.
+
 ## What is in here
 
 **1. Economic links from filing text — the extraction result stands; the return study stopped at the coverage report.**
@@ -332,6 +341,18 @@ results.
 ## Layout
 
 ```
+paper/
+  bias_fingerprints.tex     the paper; `make` compiles, `make arxiv` tarballs
+  make_figures.py           figure regenerated from the measured CSVs
+docs/
+  BIAS.md                   the two bias measurements, in full
+  FINGERPRINT.md            the proposed inversion and its four gates
+  HYPOTHESIS.md             link-study pre-registration, written before the data
+  SPECIFICATIONS.md         every choice tried, including the nine rejected
+  EXTRACTION.md             cost/quality frontier for local relation extraction
+  RESULT_01.md              a pre-registered hypothesis, rejected
+  RELATED_WORK.md           literature checked before building, not after
+  DATASHEET.md / RELEASE.md what ships, in what form, under what licence
 project/
   configs/default.yaml      one file describing the experiment
   src/
@@ -340,13 +361,15 @@ project/
     model/                  target, splits, estimators, walkforward
     portfolio/              optimizer, risk, costs
     eval/                   ic, backtest, metrics, report
+    graph/                  filings, passages, extract, resolve, build, signal
   scripts/
     build_data.py           download and cache; idempotent
     research.py             factor IC table -- the gate
-    compare_models.py       model selection by measurement
+    pit_vs_naive.py         dating arm of the paper
+    survivorship.py         universe arm of the paper
+    benchmark_table.py      extraction frontier, from cache, no GPU
     run_backtest.py         end to end
-    robustness.py           seed dispersion
-  tests/test_no_lookahead.py
+  tests/                    126 tests + 1 xfail, offline and deterministic
 ```
 
 ## Run it
@@ -364,6 +387,13 @@ python -m scripts.compare_models    # pick the model on evidence
 python -m scripts.run_backtest      # full run -> reports/<timestamp>/
 python -m scripts.robustness        # error bars
 pytest tests
+```
+
+Reproduce the paper:
+
+```bash
+make bias            # writes reports/pit_vs_naive.csv and reports/survivorship.csv
+cd paper && make     # regenerates the figure from those CSVs, compiles the PDF
 ```
 
 Each run writes a self-contained folder: the config that produced it, universe coverage,
