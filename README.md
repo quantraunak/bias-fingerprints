@@ -6,7 +6,7 @@ were filed rather than the period they describe.
 
 ## What is in here
 
-**1. Economic links from filing text — in progress, no result yet.**
+**1. Economic links from filing text — the extraction result stands; the return study stopped at the coverage report.**
 
 Companies name each other in their 10-Ks. *"Intel is one of our most significant
 customers."* *"We purchase substrates from Ibiden and Unimicron."* Nobody sells a
@@ -25,21 +25,43 @@ firms in a single fiscal year. This builds 160 issuers across 2012–2025, with
 every edge keyed to the date it was disclosed and a validity interval, so the
 graph can be asked what it looked like on any past date.
 
-The return test is therefore a **validation, not a discovery**: recovering the
-published effect on an independently built graph is evidence the graph measures
-what it claims to.
+The return test was therefore a **validation, not a discovery**. It was never
+run: the corpus stopped at 163 filings when no extractor could be found that was
+both accurate enough and fast enough to read the remaining 2,201 on one laptop.
+The pre-registration commits the study to stopping at the coverage report if
+density does not reach the cross-section, and that is what happened — the signal
+section of [`docs/SPECIFICATIONS.md`](docs/SPECIFICATIONS.md) is empty because no
+forward return has been regressed on any graph-derived quantity.
+
+**What the search produced instead is the result**:
+[what reliable relation extraction from filings actually costs](docs/EXTRACTION.md).
+Six model configurations on one annotated sample with auditable negatives:
+
+| model | F1 | s/filing | FP on empty filings | direction errors | recall on 10+ names |
+|---|---|---|---|---|---|
+| `qwen3:32b` | **0.857** | 270 | 2 | 0 | 0.789 |
+| `qwen3:30b-a3b` (MoE) | 0.792 | **13** | 2 | 1 | 0.658 |
+| `llama3:8b` | 0.646 | 47 | **27** | 1 | 0.711 |
+| `qwen3:32b` no-reasoning | 0.558 | 206 | **26** | **8** | 0.553 |
+| `qwen3:14b` | 0.462 | 32 | 3 | 0 | **0.158** |
+
+Three findings aggregate F1 hides. The five deliberately-empty filings separate
+usable from unusable models by an order of magnitude where F1 differs by less
+than two. Reasoning's contribution is preventing relation *inversions*, not
+finding more links — it also returns fewer. And a 20x-faster mixture-of-experts
+model is **perfect** on filings naming one to nine counterparties and loses a
+third on those naming ten or more: its deficit is length, not quality.
 
 The hypothesis, its falsification table and its placebo test were
 [written and committed before the extraction corpus existed](docs/HYPOTHESIS.md),
 so the design cannot be reverse-engineered from the result. Every choice made
-since is logged in [`docs/SPECIFICATIONS.md`](docs/SPECIFICATIONS.md), whose
-signal section is deliberately empty: no forward return has been regressed on any
-graph-derived quantity yet.
+since is logged in `SPECIFICATIONS.md`, including five rejected extractor
+configurations and the measurement that killed each one.
 
-Status: 4,895 10-Ks on disk, extraction running locally over the 2,364 S&P 500
-filings. The graph and the signal are built and tested but have never been run on
-a full corpus. If edge density does not reach the cross-section, the study stops
-at the coverage report, as the pre-registration commits it to.
+Status: benchmark and frontier complete and reproducible offline
+(`scripts/benchmark_table.py`). Graph is a pilot — 163 filings, 38 of 160
+issuers, 264 edges. Release plan in [`docs/RELEASE.md`](docs/RELEASE.md),
+datasheet in [`docs/DATASHEET.md`](docs/DATASHEET.md).
 
 **2. A 22-factor long-short study — complete.**
 
