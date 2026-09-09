@@ -25,3 +25,12 @@ advisor/web/next-env.d.ts
 
 # Generated dataset export; rebuild with 'make dataset'
 project/dist/
+
+# LaTeX build products
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.fls
+paper/*.fdb_latexmk
+paper/arxiv/
+paper/*-arxiv.tar.gz
