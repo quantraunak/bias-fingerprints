@@ -49,30 +49,44 @@ SEED = 7
 
 def cached_swap_extract(model: str, accession: str, counterparty: str,
                         ticker: str, filed: str, swapped: list[str],
-                        think: bool | None) -> list[str] | None:
-    """Extraction on swapped passages, cached. Returns counterparty names."""
+                        think: bool | None, num_predict: int
+                        ) -> tuple[list[str], list[str]] | None:
+    """Extraction on swapped passages, cached. Returns (raw, grounded) names.
+
+    Both are needed because the grounding check hides the more interesting
+    failure. `extract.validate` drops any claim whose evidence quote is not a
+    literal substring of the passages the model was shown, so a model that
+    names the real company AND invents a quote to support it is removed before
+    it can be counted -- and its disappearance is indistinguishable from the
+    model having said nothing. Classifying the raw output as well separates a
+    confabulated leak from genuine silence.
+    """
     suffix = "" if think is None else ("_nothink" if think is False else "_think")
     key = resolve.normalize(counterparty).replace(" ", "_")[:40] or "blank"
     path = CACHE / (model.replace(":", "_") + suffix) / accession / f"{key}.json"
     if path.exists():
-        return json.loads(path.read_text())["counterparties"]
+        payload = json.loads(path.read_text())
+        return payload["raw"], payload["kept"]
 
     response = local_model.generate(
         extract.SYSTEM,
         extract.user_prompt(ticker, ticker, filed, swapped),
         extract.Extraction.model_json_schema(),
-        model=model, timeout=1800, think=think,
+        model=model, timeout=1800, think=think, num_predict=num_predict,
     )
     if not response.ok:
         return None
+    raw_links = extract.parse_response(response.text)
     # Validation runs against the SWAPPED passages: a quote grounded in text the
     # model was never shown is exactly the failure being measured, so it must
     # not be silently repaired by validating against the original.
-    kept, _ = extract.validate(extract.parse_response(response.text), swapped)
-    names = [link["counterparty"] for link in kept]
+    kept, _ = extract.validate(raw_links, swapped)
+    raw_names = [link["counterparty"] for link in raw_links]
+    kept_names = [link["counterparty"] for link in kept]
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"counterparties": names, "seconds": response.seconds}))
-    return names
+    path.write_text(json.dumps({"raw": raw_names, "kept": kept_names,
+                                "seconds": response.seconds}))
+    return raw_names, kept_names
 
 
 def main() -> None:
@@ -84,6 +98,11 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=40,
                         help="counterparties to test; each costs one model call")
     parser.add_argument("--claims", default=str(CLAIMS))
+    # E7: local_model defaults to 6000 inside an 8192-token context, and a
+    # ~3,400-token prompt plus that budget overflows the window, triggering
+    # context shift and re-prefill. Median cost 116s, mean 781s, worst observed
+    # 11,843s. 4000 keeps the total under the window.
+    parser.add_argument("--num-predict", type=int, default=4000)
     args = parser.parse_args()
 
     config = Config.load(args.config)
@@ -120,24 +139,37 @@ def main() -> None:
             # is nothing to ablate and the pair says nothing either way.
             continue
 
-        names = cached_swap_extract(
+        result = cached_swap_extract(
             args.model, row.accession, row.counterparty, meta.ticker,
             str(pd.Timestamp(meta.filed).date()), swapped, args.think,
+            args.num_predict,
         )
-        if names is None:
+        if result is None:
             print(f"  {meta.ticker} / {row.counterparty}: extraction failed", flush=True)
             continue
+        raw_names, kept_names = result
 
-        verdict = contamination.classify(names, row.counterparty, alias, lookup)
+        # The leakage measure is taken on RAW output: emitting the real name is
+        # the event, whether or not the model managed to attach a quote that
+        # survives grounding. `grounded` then records which kind of leak it was.
+        verdict = contamination.classify(raw_names, row.counterparty, alias, lookup)
+        grounded_verdict = contamination.classify(kept_names, row.counterparty, alias, lookup)
         rows.append({
             "accession": row.accession, "ticker": meta.ticker,
             "counterparty": row.counterparty, "counterparty_ticker": row.counterparty_ticker,
             "alias": alias, "replaced": replaced, "verdict": verdict,
+            "grounded_verdict": grounded_verdict,
+            "leak_kind": ("none" if verdict != "phantom"
+                          else "grounded" if grounded_verdict == "phantom"
+                          else "confabulated"),
             "year": pd.Timestamp(meta.filed).year,
             "mentions": prominence.get(row.counterparty_ticker, 1),
         })
         print(f"  [{i}/{len(pairs)}] {meta.ticker:6} {row.counterparty[:34]:34} "
-              f"-> {verdict}", flush=True)
+              f"-> {verdict}"
+              + ("" if verdict != "phantom" else
+                 f" ({'grounded' if grounded_verdict == 'phantom' else 'confabulated'})"),
+              flush=True)
 
     if not rows:
         print("no testable pairs")
@@ -152,6 +184,13 @@ def main() -> None:
     print(f"\n{n} counterparties tested on {frame.accession.nunique()} filings")
     for verdict in ("read", "silent", "phantom"):
         print(f"  {verdict:8} {counts.get(verdict, 0):4}  {counts.get(verdict, 0)/n:6.1%}")
+
+    leaks = frame[frame.verdict == "phantom"]
+    if len(leaks):
+        print("\n  of which grounded (real quote, wrong name): "
+              f"{(leaks.leak_kind == 'grounded').sum()}")
+        print("       confabulated (quote invented, dropped by grounding): "
+              f"{(leaks.leak_kind == 'confabulated').sum()}")
 
     frame["phantom"] = frame.verdict == "phantom"
     if frame.year.nunique() > 1:
