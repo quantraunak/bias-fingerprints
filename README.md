@@ -8,6 +8,11 @@ period they describe.
 **Paper: [Bias Fingerprints](paper/bias_fingerprints.pdf)** (9pp, LaTeX source in
 [`paper/`](paper/)).
 
+**The exact-zero control in Section 1 is now a tool:
+[`leakcheck`](https://github.com/quantraunak/leakcheck)** generalises it out of finance.
+Move when a data source became knowable, recompute, and any feature that moves has a
+dependency it never declared. It is what caught `turnover_1m` here.
+
 ---
 
 ## 1. Bias fingerprinting
