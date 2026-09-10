@@ -133,6 +133,58 @@ it is instantiated on, Sections~\ref{sec:dating} and~\ref{sec:surv} the two sign
 Section~\ref{sec:fingerprints} their separability, and Section~\ref{sec:protocol} the
 validation protocol and the conditions under which the diagnostic transfers.
 
+\section{Related work}
+\label{sec:related}
+
+Three literatures bear on this, and none of them answers the question above.
+
+\paragraph{The errors themselves are old and well characterised.} Banz and Breen
+\cite{banz1986} established that look-ahead inflates measured returns in accounting-based
+tests. Survivorship bias in performance evaluation was quantified by Brown, Goetzmann,
+Ibbotson and Ross \cite{brown1992} and by Elton, Gruber and Blake \cite{elton1996}, and
+Shumway \cite{shumway1997} and Shumway and Warther \cite{shumway1999} showed that even CRSP
+needs care, because missing delisting returns bias the small-cap end of the cross-section.
+None of that work is superseded here. What it does not do is characterise the \emph{shape}
+of each distortion across a factor cross-section, which is the object this paper measures.
+
+\paragraph{Work on false discovery in the factor zoo concerns multiplicity, not
+provenance.} Lo and MacKinlay \cite{lo1990} formalised data-snooping bias. Harvey, Liu and
+Zhu \cite{harvey2016} argue that the accumulated search over published factors demands a
+$t$-statistic threshold near $3.0$. Bailey and L\'opez de Prado \cite{bailey2014deflated}
+deflate the Sharpe ratio for selection and non-normality, and Bailey et al.
+\cite{bailey2014pseudo} show how fast backtest overfitting manufactures apparent skill.
+McLean and Pontiff \cite{mclean2016} document post-publication decay consistent with a
+substantial share of published anomalies being artifacts.
+
+That literature asks whether a result survives the number of hypotheses tested. It is silent
+on whether a result is an artifact of how the panel was \emph{built}, and the two leave
+different traces. Multiplicity inflates broadly and without regard to how a factor is
+constructed; Section~\ref{sec:surv} exhibits a construction defect that \emph{lowers} mean IC
+while manufacturing significance in one specific corner of the cross-section. No
+multiple-testing correction would flag it, because nothing about the average looks improved.
+
+\paragraph{The machine-learning literature names the mechanism but assumes access.} Kaufman,
+Rosset and Perlich \cite{kaufman2012} give the canonical formulation of leakage and propose
+detection through legitimacy checks on the training data. Kapoor and Narayanan
+\cite{kapoor2023} document leakage across a wide range of published ML-based science and
+argue it constitutes a reproducibility crisis rather than a set of isolated mistakes. Both
+address a researcher holding the pipeline. The device used in Section~\ref{sec:dating} to
+establish the exclusion restriction is metamorphic testing \cite{chen1998metamorphic}:
+identify a transformation of the input under which the output must be invariant, apply it,
+and treat any change as a defect. The idea is standard in software testing and, as far as we
+have found, has not been applied to the construction of an asset-pricing panel.
+
+\paragraph{Reproducibility infrastructure.} Chen and Zimmermann \cite{chen2022} release
+open-source replications of a large set of published cross-sectional predictors, and
+Novy-Marx and Velikov \cite{novymarx2016} price anomalies net of realistic trading costs.
+Both establish that construction choices dominate reported performance. Neither treats the
+construction choice as a quantity to be \emph{inferred} from a reported table.
+
+\paragraph{Where this sits.} The forward direction --- what a given defect does to a given
+study --- is a measurement in the tradition of the first group, made with the controlled
+one-arm-at-a-time design the fourth group argues for. The inverse direction is what is new,
+and Section~\ref{sec:protocol} is explicit that it is proposed rather than established.
+
 \section{The framework}
 \label{sec:framework}
 
@@ -254,7 +306,8 @@ published direction, sector-neutralised and rank-normalised. Eleven read a filed
 fundamental. Eleven use only price and volume.
 
 \paragraph{Evaluation.} Information coefficient against 21-day forward returns,
-out-of-sample from 2014-01-01, with a purged and embargoed walk-forward. The evaluation
+out-of-sample from 2014-01-01, with a purged and embargoed walk-forward following
+L\'opez de Prado \cite{lopezdeprado2018}. The evaluation
 code is shared across every arm below, so the standard cannot drift between them.
 
 \section{Signature 1: fundamentals dated on fiscal period end}
@@ -365,9 +418,9 @@ Two factors cross $|t| = 2$.
 \toprule
 Factor & PIT IC & Biased IC & PIT $t$ & Biased $t$ \\
 \midrule
-\fac{amihud\_illiquidity} & $-0.0105$ & $\mathbf{+0.0224}$ & $-1.11$ & $\mathbf{+2.80}$ \\
+\fac{amihud\_illiquidity}~\cite{amihud2002} & $-0.0105$ & $\mathbf{+0.0224}$ & $-1.11$ & $\mathbf{+2.80}$ \\
 \fac{turnover\_1m} & $-0.0047$ & $-0.0232$ & $-0.48$ & $\mathbf{-2.53}$ \\
-\fac{idio\_vol\_60d} & $+0.0059$ & $-0.0179$ & $0.49$ & $-1.53$ \\
+\fac{idio\_vol\_60d}~\cite{ang2006} & $+0.0059$ & $-0.0179$ & $0.49$ & $-1.53$ \\
 \fac{vol\_60d} & $-0.0013$ & $-0.0234$ & $-0.08$ & $-1.49$ \\
 \bottomrule
 \end{tabular}
@@ -500,11 +553,102 @@ an opinion about, which means each already has a signature waiting to be measure
 fetched per user rather than redistributed. The point-in-time fundamentals layer and the
 membership spells are released under CC~BY~4.0.
 
-\begin{thebibliography}{9}
+\begin{thebibliography}{99}
+
+\bibitem{amihud2002}
+Y.~Amihud.
+\newblock Illiquidity and stock returns: cross-section and time-series effects.
+\newblock \emph{Journal of Financial Markets}, 5(1):31--56, 2002.
+
+\bibitem{ang2006}
+A.~Ang, R.~J. Hodrick, Y.~Xing, and X.~Zhang.
+\newblock The cross-section of volatility and expected returns.
+\newblock \emph{Journal of Finance}, 61(1):259--299, 2006.
+
+\bibitem{bailey2014deflated}
+D.~H. Bailey and M.~L\'opez de Prado.
+\newblock The deflated Sharpe ratio: correcting for selection bias, backtest
+  overfitting, and non-normality.
+\newblock \emph{Journal of Portfolio Management}, 40(5):94--107, 2014.
+
+\bibitem{bailey2014pseudo}
+D.~H. Bailey, J.~M. Borwein, M.~L\'opez de Prado, and Q.~J. Zhu.
+\newblock Pseudo-mathematics and financial charlatanism: the effects of backtest
+  overfitting on out-of-sample performance.
+\newblock \emph{Notices of the American Mathematical Society}, 61(5):458--471, 2014.
+
 \bibitem{banz1986}
 R.~Banz and W.~Breen.
 \newblock Sample-dependent results using accounting and market data: some evidence.
 \newblock \emph{Journal of Finance}, 41(4):779--793, 1986.
+
+\bibitem{brown1992}
+S.~J. Brown, W.~Goetzmann, R.~G. Ibbotson, and S.~A. Ross.
+\newblock Survivorship bias in performance studies.
+\newblock \emph{Review of Financial Studies}, 5(4):553--580, 1992.
+
+\bibitem{chen2022}
+A.~Y. Chen and T.~Zimmermann.
+\newblock Open source cross-sectional asset pricing.
+\newblock \emph{Critical Finance Review}, 11(2):207--264, 2022.
+
+\bibitem{chen1998metamorphic}
+T.~Y. Chen, S.~C. Cheung, and S.~M. Yiu.
+\newblock Metamorphic testing: a new approach for generating next test cases.
+\newblock Technical Report HKUST-CS98-01, Hong Kong University of Science and
+  Technology, 1998.
+
+\bibitem{elton1996}
+E.~J. Elton, M.~J. Gruber, and C.~R. Blake.
+\newblock Survivorship bias and mutual fund performance.
+\newblock \emph{Review of Financial Studies}, 9(4):1097--1120, 1996.
+
+\bibitem{harvey2016}
+C.~R. Harvey, Y.~Liu, and H.~Zhu.
+\newblock $\ldots$ and the cross-section of expected returns.
+\newblock \emph{Review of Financial Studies}, 29(1):5--68, 2016.
+
+\bibitem{kapoor2023}
+S.~Kapoor and A.~Narayanan.
+\newblock Leakage and the reproducibility crisis in machine-learning-based science.
+\newblock \emph{Patterns}, 4(9):100804, 2023.
+
+\bibitem{kaufman2012}
+S.~Kaufman, S.~Rosset, and C.~Perlich.
+\newblock Leakage in data mining: formulation, detection, and avoidance.
+\newblock \emph{ACM Transactions on Knowledge Discovery from Data}, 6(4):1--21, 2012.
+
+\bibitem{lo1990}
+A.~W. Lo and A.~C. MacKinlay.
+\newblock Data-snooping biases in tests of financial asset pricing models.
+\newblock \emph{Review of Financial Studies}, 3(3):431--467, 1990.
+
+\bibitem{lopezdeprado2018}
+M.~L\'opez de Prado.
+\newblock \emph{Advances in Financial Machine Learning}.
+\newblock Wiley, 2018.
+
+\bibitem{mclean2016}
+R.~D. McLean and J.~Pontiff.
+\newblock Does academic research destroy stock return predictability?
+\newblock \emph{Journal of Finance}, 71(1):5--32, 2016.
+
+\bibitem{novymarx2016}
+R.~Novy-Marx and M.~Velikov.
+\newblock A taxonomy of anomalies and their trading costs.
+\newblock \emph{Review of Financial Studies}, 29(1):104--147, 2016.
+
+\bibitem{shumway1997}
+T.~Shumway.
+\newblock The delisting bias in CRSP data.
+\newblock \emph{Journal of Finance}, 52(1):327--340, 1997.
+
+\bibitem{shumway1999}
+T.~Shumway and V.~A. Warther.
+\newblock The delisting bias in CRSP's Nasdaq data and its implications for the
+  size effect.
+\newblock \emph{Journal of Finance}, 54(6):2361--2379, 1999.
+
 \end{thebibliography}
 
 \end{document}
