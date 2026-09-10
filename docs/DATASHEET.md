@@ -11,9 +11,10 @@ sells to whom — are disclosed in the prose of SEC 10-K filings but are not
 present in any free structured source. Commercial supply-chain graphs exist
 (FactSet Revere, Bloomberg SPLC) but are proprietary, and to our knowledge none
 is published point-in-time, meaning edges keyed to the date the market could
-first have seen them. This dataset was built to test whether returns propagate
-along such links, and the extraction problem turned out to be the part worth
-publishing.
+first have seen them. It is released alongside a construction protocol —
+`EXTRACTION.md` for the extractor choice, `HYPOTHESIS.md` for the pre-registered
+coverage gate — so that the graph and the method for building another one ship
+together.
 
 **Who created it?** One person, as independent research. No funding, no API
 spend, all computation on one laptop.

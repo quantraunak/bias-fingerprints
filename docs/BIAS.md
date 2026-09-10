@@ -1,11 +1,15 @@
-# Two bugs, two fingerprints
+# Two calibrated signatures
 
 Every factor in this repository, scored three ways under a wrong filing calendar
-and two ways under a wrong universe. The point is not that look-ahead inflates
-results — that has been known since Banz and Breen (1986). The point is that the
-two most common bugs in cross-sectional equity research distort the factor zoo in
-*different and identifiable ways*, so the pattern of which factors a study gets
-wrong is evidence about which bug it contains.
+and two ways under a wrong universe. This is the measurement half of the
+framework in `FINGERPRINT.md`: the generator produces one factor study under
+alternative data conventions, and the difference between two arms is the
+signature of the convention that changed.
+
+That look-ahead inflates results has been known since Banz and Breen (1986). What
+is measured here is the *shape* of each distortion — which factors move, by how
+much, in which direction, and which cannot move at all — because the shape is
+what a diagnostic can test for in a study whose pipeline is not available.
 
 All figures are out-of-sample from 2014-01-01, 21-day forward returns, S&P 500
 point-in-time membership, sector-neutral rank-normalised scores. Reproduce with
@@ -13,7 +17,7 @@ point-in-time membership, sector-neutral rank-normalised scores. Reproduce with
 
 ---
 
-## Bug 1: joining fundamentals on period end
+## Signature 1: fundamentals dated on fiscal period end
 
 A quarter ending 31 March is not public on 31 March. It becomes public when the
 10-Q is filed, a median of 34 days later. Joining on period end hands the
@@ -78,7 +82,7 @@ correctly measured.
 
 ---
 
-## Bug 2: using today's index membership for the whole history
+## Signature 2: a universe conditioned on current membership
 
 Download today's 500 constituents, pull their price history, backtest. The
 resulting panel conditions on index membership *as of the end of the sample*.
@@ -127,7 +131,7 @@ is not a risk premium. It is a description of a company on its way into the S&P
 
 ---
 
-## Why the two fingerprints are useful
+## Separability of the two signatures
 
 The distortions do not overlap.
 
@@ -144,9 +148,12 @@ value and quality factors clear t = 2 while its momentum factors look ordinary
 has a dating problem. Neither is visible from a Sharpe ratio, and both are
 visible from the cross-section of what the study claims to have found.
 
-## Limitations
+`FINGERPRINT.md` states the inference model that turns that observation into a
+test, and the four gates that have to pass before it may report anything.
 
-- One index, one country, 2010–2026. The fingerprints are measured on the S&P
+## Scope conditions
+
+- One index, one country, 2010–2026. The signatures are measured on the S&P
   500 and should not be assumed to transfer to small caps or non-US markets.
 - Membership spells are reconstructed from the revision history of a Wikipedia
   page, which is the best free approximation of a point-in-time constituent file

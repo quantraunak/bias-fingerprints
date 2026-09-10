@@ -16,8 +16,8 @@
 
 \newcommand{\fac}[1]{\texttt{\small #1}}
 
-\title{\bfseries Two Bugs, Two Fingerprints:\\[2pt]
-Identifying Data-Handling Errors from the\\Cross-Section of Reported Factor Performance}
+\title{\bfseries Bias Fingerprints:\\[2pt]
+Diagnosing Data-Handling Errors from the\\Cross-Section of Reported Factor Performance}
 
 \author{Raunak Sood\\
 \normalsize University of Southern California\\
@@ -30,86 +30,215 @@ Identifying Data-Handling Errors from the\\Cross-Section of Reported Factor Perf
 
 \begin{abstract}
 \noindent
-Look-ahead and survivorship bias are known to inflate backtested performance. The
-standard treatment of both is prescriptive: it names the error and shows how to avoid
-it in one's own pipeline. That framing assumes the reader controls the code. The
-situation that recurs in practice is the opposite. An allocator reads a manager's
-factor table, a researcher reads a published result, a desk evaluates a vendor's
-signal. In each case the biased artifact is visible and the pipeline that produced it
-is not.
+A table of factor $t$-statistics is usually all an outside reader gets. The allocator
+reading a manager's factor deck, the referee reading a submitted backtest, the desk
+pricing a vendor signal: none of them can run the pipeline that produced the numbers,
+and the literature on look-ahead and survivorship bias is written for someone who can.
 
-We measure what two common data-handling errors do to a twenty-two factor
-cross-sectional study built on point-in-time US equity data, holding everything else
-fixed. Joining fundamentals on fiscal period end rather than filing date inflates mean
-information coefficient by 59\% among the eleven factors that read a filed figure, and
-manufactures four $t$-statistics above $2.0$ from factors that are insignificant under
-correct dating. Conditioning the universe on current index membership does not
-uniformly inflate. Mean IC \emph{falls} by $0.0043$, while \fac{amihud\_illiquidity}
-flips sign and becomes significant ($t: -1.11 \rightarrow +2.80$) and \fac{turnover\_1m}
-becomes significant with the wrong sign ($t: -0.48 \rightarrow -2.53$).
+We propose \emph{bias fingerprinting}, a framework that turns a controlled research
+pipeline into a diagnostic instrument for uncontrolled ones. Each data-handling defect is
+represented as the vector of shifts it induces across a fixed factor cross-section; that
+vector is measured once on a pipeline the analyst owns, then used as a known quantity in
+a hypothesis test on a reported table. The framework has four parts: a generator that
+re-runs one study under alternative data conventions, a measured signature per defect, an
+inference model that separates signature from unknown true performance, and a
+pre-specified validation protocol.
 
-The two distortions are nearly orthogonal across the factor cross-section (correlation
-$-0.088$) and move value factors in opposite directions. Under dating bias, eleven
-price-and-volume factors are unchanged to machine precision, exactly rather than
-approximately, because they never read a filed figure. We argue that this structure
-makes the \emph{pattern} of reported factor performance diagnostic of the underlying
-error, and we set out the conditions under which that inversion would be valid. Those
-conditions are not yet tested, and we say so.
+We instantiate it on a twenty-two factor US equity study and calibrate two signatures.
+Joining fundamentals on fiscal period end rather than filing date inflates mean
+information coefficient by 59\% among the eleven factors that read a filed figure and
+manufactures four $t$-statistics above $2.0$, while leaving the eleven price-only factors
+unchanged to machine precision. Conditioning the universe on current index membership
+does not inflate at all: mean IC \emph{falls} by $0.0043$ while \fac{amihud\_illiquidity}
+flips from $t = -1.11$ to $+2.80$ and the low-volatility anomaly inverts. The two
+signatures correlate at $-0.088$ and disagree in sign on value factors, which is what
+makes the diagnostic feasible.
 \end{abstract}
 
 \section{Introduction}
 
-That look-ahead bias inflates backtested returns has been known since Banz and Breen
-\cite{banz1986}. That survivorship bias does the same is textbook. Neither observation
-is a contribution, and this paper does not claim otherwise.
+Factor research is consumed as a table. An allocator sees mean IC, an information ratio
+and a $t$-statistic for each of a manager's signals. A referee sees the same for a
+submitted paper. A desk evaluating a vendor sees less. In none of these cases is the
+pipeline available, and a Sharpe ratio carries no information about which construction
+choice produced it.
 
-What is less established is \emph{how} each error distorts a factor study: which factors
-move, by how much, and in which direction. This matters because the consumer of factor
-research is rarely in a position to audit the pipeline. A Sharpe ratio carries no
-information about which bug produced it. A cross-section of twenty-two factor
-$t$-statistics might.
+The literature on data-handling bias is prescriptive and self-directed. Banz and Breen
+\cite{banz1986} established that look-ahead inflates backtested returns; survivorship is
+textbook. Both are taught as things to avoid in one's own code: date the fundamentals
+correctly, build the universe point-in-time, shift a feature forward and check that the
+result degrades. All of it assumes the reader controls the pipeline. Nothing in it helps
+the reader who controls only the table.
 
-This paper studies two specific data-handling errors as empirical objects. Our central
-question is:
+This paper proposes a framework for that reader. The idea is that a data-handling defect
+is not a scalar amount of inflation but a \emph{direction} in factor space, and that the
+direction is a property of the defect rather than of the study it damages. A defect that
+corrupts filed fundamentals cannot move a factor built from prices alone. A defect that
+corrupts the universe moves liquidity and volatility factors hardest, because it selects
+on size. Different defects therefore leave different patterns, and a pattern is something
+a reader can see in a table.
 
-\begin{quote}
-Given a table of reported factor performance, and no access to the pipeline that
-produced it, can the underlying data-handling error be identified from the pattern of
-which factors are distorted?
-\end{quote}
+\paragraph{The framework.} Bias fingerprinting has four components, set out in
+Section~\ref{sec:framework}. A \emph{generator} re-runs one factor study under
+alternative data conventions with everything else held fixed, so the difference between
+two arms is attributable to the convention. A \emph{signature} $\delta_b$ is the vector of
+$t$-statistic shifts a defect $b$ induces across the factor cross-section, measured on
+that generator. An \emph{inference model} treats an observed table as true performance
+plus a signature plus noise, and recovers the signature using exclusion restrictions and
+within-family contrasts rather than a fitted classifier. A \emph{validation protocol}
+states, in advance, the four measurements that have to succeed before the diagnostic may
+be applied to a real table, and the order in which they are made.
 
-We answer the forward half of that question and set out conditions for the inverse.
-Our contributions are:
+The framework is not specific to the two defects calibrated here, or to equities. It
+applies wherever a research pipeline can be re-run under a defective convention, which is
+to say wherever the analyst owns a correct pipeline. That is what makes the labelled data
+for validation free: biased panels are generated rather than collected, so the diagnostic
+can be tested at scale with no annotation and no external dataset.
+
+\paragraph{Calibration.} We instantiate the framework on a twenty-two factor
+cross-sectional US equity study and calibrate two signatures. Joining fundamentals on
+fiscal period end inflates mean IC by 59\% of its true value among the eleven factors that
+read a filed figure, and turns four insignificant factors into $t$-statistics above 2.0.
+Its eleven price-only factors do not move at all, with maximum absolute drift
+$\num{0.0e+00}$: exact equality in floating point, which is the strongest form an
+exclusion restriction can take. Conditioning the universe on current index membership
+behaves differently in every respect. Mean IC falls by $0.00432$ and only 8 of 22 factors
+improve, but \fac{amihud\_illiquidity} moves from $t = -1.11$ to $+2.80$,
+\fac{turnover\_1m} becomes significant with the wrong sign, and the low-volatility anomaly
+inverts. The channel is not the survival filter usually named: the biased panel wrongly
+\emph{includes} 203 names a day that had not yet been admitted to the index, against 88 it
+wrongly excludes, and the included cohort is a third the size and a third the liquidity of
+a genuine constituent.
+
+Across the twenty-two factors the two signature vectors correlate at $-0.088$, and they
+disagree in sign on value: dating inflates \fac{earnings\_yield} and \fac{roe} by $+0.98$
+and $+1.07$ $t$-units while universe conditioning deflates them by $-1.28$ and $-1.24$. A
+table cannot be explained by both. Together with the exclusion restriction, that
+separation is the empirical content the diagnostic rests on.
+
+\paragraph{Contribution.} Three things are new. The framework itself, which reverses the
+direction of the standard treatment of data-handling bias, from prescription for the
+producer to diagnosis for the consumer. The two calibrated signatures, measured with
+identical prices, universe, tradability screen and forward returns, changing one
+convention at a time. And the characterisation of the universe channel as a
+forward-looking growth filter rather than a survival filter, which explains why it
+relocates measured performance instead of inflating it.
+
+The framework is specified and calibrated; it is not yet validated as a test. Gates one
+through three of Section~\ref{sec:protocol} have not been run, and we treat that ordering
+as part of the method rather than as an omission: a diagnostic that reports a label
+without a calibrated reference distribution is worse than no diagnostic.
+Section~\ref{sec:framework} sets out the framework, Section~\ref{sec:data} the generator
+it is instantiated on, Sections~\ref{sec:dating} and~\ref{sec:surv} the two signatures,
+Section~\ref{sec:fingerprints} their separability, and Section~\ref{sec:protocol} the
+validation protocol and the conditions under which the diagnostic transfers.
+
+\section{The framework}
+\label{sec:framework}
+
+\subsection{The generator}
+
+Fix a factor registry, an evaluation window, a forward-return definition and a
+walk-forward split. A generator is a pipeline that produces the resulting table of factor
+$t$-statistics under any of a set of data conventions, sharing every component that the
+convention does not touch. Prices, tradability screen, sector neutralisation,
+rank-normalisation and evaluation code are common across arms; the arm changes one
+construction decision.
+
+The generator is what supplies the counterfactual. Without it, the effect of a defect can
+only be argued; with it, the effect is a difference between two runs of the same code.
+The requirement it imposes is real: the analyst must own a pipeline that is correct on the
+dimension being studied, because the correct arm is the baseline everything is measured
+against.
+
+\subsection{The signature}
+
+Let $t^{\text{pit}}$ be the vector of factor $t$-statistics from the correct arm and
+$t^{b}$ the vector from the arm containing defect $b$. The signature is the difference,
+\begin{equation}
+\delta_b = t^{b} - t^{\text{pit}},
+\label{eq:signature}
+\end{equation}
+one component per factor, with $\delta_{\text{none}} = 0$ by construction. A signature is
+useful to the extent it has structure: components that are exactly zero, components that
+are large, and a direction that other defects do not share. Sections~\ref{sec:dating}
+and~\ref{sec:surv} measure $\delta_b$ for two defects and Section~\ref{sec:fingerprints}
+reports the geometry of the pair.
+
+\subsection{The inference problem}
+
+An observed table from an unknown pipeline is a vector $t$ of factor $t$-statistics. Model
+it as
+\begin{equation}
+t = \tau + \delta_b + \varepsilon,
+\label{eq:model}
+\end{equation}
+where $\tau$ is the study's true factor performance, $\delta_b$ is the measured signature
+of whichever defect the study contains, and $\varepsilon$ is sampling noise. The
+diagnostic problem is to infer $b$.
+
+Since $\tau$ is unknown and twenty-two dimensional, $b$ is not identified without further
+structure. The framework uses three sources of it, in increasing order of assumption:
 
 \begin{enumerate}
-\item We quantify what each of two errors does to the same factor study, with identical
-prices, universe, tradability screen and forward returns, changing one thing at a time.
-Eleven factors that cannot respond to the dating treatment serve as controls and confirm
-the harness introduces nothing: their IC is identical to machine precision across all
-three dating conventions.
-
-\item We show the two distortions are structurally distinct. They are nearly orthogonal
-across the factor cross-section, they disagree in sign on value factors, and one leaves
-an entire block of factors provably untouched.
-
-\item We characterise the survivorship channel as a forward-looking growth filter rather
-than a survival filter, and show it relocates rather than inflates measured performance.
-
-\item We propose an inversion---inferring the error from the reported cross-section---and
-state the four conditions that would have to hold before it could be claimed. Those
-conditions are not tested here.
+\item \textbf{Exclusion.} Some defects cannot move some factors, for reasons of
+construction rather than magnitude. Dating bias cannot move a factor that never reads a
+filed figure. If a study's strongest results sit in the excluded block, that defect is
+ruled out whatever $\tau$ is. This requires no assumption on $\tau$ at all.
+\item \textbf{Within-family contrast.} Assume $\tau$ is exchangeable within factor
+families: value factors share a true level, momentum factors share a different one. Family
+means then absorb $\tau$, and within-family deviations are attributable to $\delta_b$.
+This is the workhorse assumption, and it is testable against the factor-zoo literature.
+\item \textbf{Projection.} Score a table by its projection onto each candidate signature
+after removing family means. Under the null that $\tau$ is exchangeable within families,
+that projection has a computable reference distribution, so the output is a $p$-value
+rather than a label.
 \end{enumerate}
 
-The fourth is a proposal rather than a result. We are explicit about that separation
-throughout, because the first three are measurements and the fourth is not.
+Fitting a classifier from tables to defect labels is the obvious alternative and it does
+not survive the sample size. A twelve-year out-of-sample window gives six non-overlapping
+two-year observations; three conditions give eighteen labelled examples for a
+twenty-two dimensional feature vector, and cross-validation over overlapping windows would
+conceal the overfitting rather than reveal it. The signature is measured once from a
+pipeline we control and then held fixed. There is nothing to learn, only something to
+estimate and something to test.
 
-\section{Data and construction}
+\subsection{The validation protocol}
+\label{sec:protocol}
+
+The framework commits in advance to four measurements, in order. Each is a gate: failing
+one ends the method rather than downgrading its claims.
+
+\begin{enumerate}
+\item \textbf{Signature stability.} $\delta_b$ must be a property of the defect rather
+than of the sample it was measured on. Re-measure on disjoint subperiods and random
+half-universes. If \fac{amihud\_illiquidity} does not move sharply positive under universe
+conditioning in every subsample, there is no signature.
+\item \textbf{Signature uncertainty.} A point estimate cannot support a test. Bootstrap
+over dates for a sampling covariance, and report each signature with error bars.
+\item \textbf{Separability under realistic noise.} Simulate tables from priors over
+$\tau$, apply each defect, add noise at the level a twelve-year study actually carries,
+and report the confusion matrix. Whether two defects remain separable at that noise level
+is an empirical question with a measurable answer.
+\item \textbf{Calibrated application.} Only then run the diagnostic on reported tables,
+and report a $p$-value or a posterior over $\{$none, dating, universe, both$\}$, never a
+bare label.
+\end{enumerate}
+
+Gate three is where labelled data would normally be the binding constraint, and here it is
+free. Biased panels are produced by the generator itself, so the confusion matrix can be
+estimated over as many synthetic studies as compute allows, with no annotation and no
+external dataset. That property is what makes the protocol executable by one researcher,
+and it is a reason to prefer this formulation over a supervised one independent of sample
+size.
+
+\section{The generator, instantiated}
 \label{sec:data}
 
 \paragraph{Universe.} S\&P 500 point-in-time membership, reconstructed as dated
 constituent spells from the revision history of a public reference page. This is a free
-approximation to a point-in-time constituent file and is not CRSP; Section~\ref{sec:limits}
-treats the consequences.
+approximation to a point-in-time constituent file and is not CRSP;
+Section~\ref{sec:limits} treats the consequences.
 
 \paragraph{Prices.} Daily adjusted closes, 2010--2026, with a tradability screen on
 price, volume and index membership.
@@ -126,32 +255,33 @@ fundamental. Eleven use only price and volume.
 
 \paragraph{Evaluation.} Information coefficient against 21-day forward returns,
 out-of-sample from 2014-01-01, with a purged and embargoed walk-forward. The evaluation
-code is shared across every condition below, so the standard cannot drift between arms.
+code is shared across every arm below, so the standard cannot drift between them.
 
-\section{Bug 1: joining fundamentals on fiscal period end}
+\section{Signature 1: fundamentals dated on fiscal period end}
 \label{sec:dating}
 
 A quarter ending 31 March is not public on 31 March. It becomes public when the 10-Q is
 filed, a median of 34 days later. Joining on period end hands the backtest a month of
 information nobody had.
 
-We compare three conventions, holding everything else fixed:
+The generator produces three arms, holding everything else fixed:
 
 \begin{itemize}
 \item \textbf{PIT} --- visible the day the filing landed, and correct.
 \item \textbf{LAG45} --- every company files 45 days after quarter end, which is common
 practice.
-\item \textbf{NAIVE} --- visible the instant the quarter closed, which is the error.
+\item \textbf{NAIVE} --- visible the instant the quarter closed, which is the defect.
 \end{itemize}
 
 \subsection{The controls hold exactly}
 
-Eleven factors read no filed figure. Across all three conventions their IC is identical,
-with maximum absolute drift $\num{0.0e+00}$. That is exact equality in floating point,
-not a small number.
+Eleven factors read no filed figure. Across all three arms their IC is identical, with
+maximum absolute drift $\num{0.0e+00}$. That is exact equality in floating point, not a
+small number.
 
-This is what licenses the rest of the section. It establishes that nothing in the harness
-responds to the filing calendar except the factors that must.
+This is what licenses the rest of the section. It establishes that nothing in the
+generator responds to the filing calendar except the factors that must, and it is the
+empirical basis for the exclusion restriction of Section~\ref{sec:framework}.
 
 One factor required care. \fac{turnover\_1m} is built from price and volume but divides
 by shares outstanding, so it inherits the filing calendar through its denominator. It is
@@ -159,7 +289,7 @@ the only price-family factor that does. We determine dating sensitivity by measu
 and check it against a declared set, so a factor that quietly acquires a filed input is
 surfaced rather than hidden among the controls.
 
-\subsection{What the error is worth}
+\subsection{What the defect is worth}
 
 \begin{table}[h]
 \centering
@@ -186,9 +316,10 @@ The comparison between the two rows of Table~\ref{tab:dating} is the practical r
 fixed 45-day lag is wrong, being right on average and wrong for every filing that arrives
 later than that, but it manufactures no false discoveries in this sample. The period-end
 join manufactures four. The distinction between ``approximately right'' and ``wrong'' is
-the distinction between a bias and a bug.
+the distinction between a bias and a bug, and only the second leaves a signature worth
+testing for.
 
-\section{Bug 2: conditioning the universe on current membership}
+\section{Signature 2: a universe conditioned on current membership}
 \label{sec:surv}
 
 Download today's constituents, pull their price history, backtest. The resulting panel
@@ -219,7 +350,8 @@ third the liquidity of a genuine constituent.}
 
 These are companies that were small early in the sample and grew enough to be admitted
 later. Conditioning on current membership is therefore not principally a survival filter.
-It is a forward-looking growth filter aimed at the small and illiquid cohort.
+It is a forward-looking growth filter aimed at the small and illiquid cohort, and that
+mechanism predicts the shape of the signature before the signature is measured.
 
 \subsection{The distortion relocates rather than inflates}
 
@@ -245,13 +377,18 @@ wrong sign; the low-volatility anomaly inverts.}
 \label{tab:surv}
 \end{table}
 
-In a survivorship-biased panel, being illiquid predicts returns, because the illiquid
-names in today's index are precisely those that were small years ago and then grew into
-it. A biased panel says: buy the illiquid, high-turnover, high-volatility names. That is
-not a risk premium. It is a description of a company on its way into the index, read
-backwards.
+In a panel conditioned on current membership, being illiquid predicts returns, because the
+illiquid names in today's index are precisely those that were small years ago and then
+grew into it. Such a panel says: buy the illiquid, high-turnover, high-volatility names.
+That is not a risk premium. It is a description of a company on its way into the index,
+read backwards.
 
-\section{The two fingerprints}
+A defect that lowers mean IC is worth dwelling on, because it is invisible to the summary
+statistic an outside reader is most likely to be shown. Nothing about this study's average
+performance looks improved. Two of its factors are nonetheless significant for reasons
+that have nothing to do with returns.
+
+\section{Separability of the two signatures}
 \label{sec:fingerprints}
 
 \begin{figure}[h]
@@ -260,14 +397,14 @@ backwards.
 \caption{Shift in $t$-statistic from the point-in-time baseline, all twenty-two factors,
 ordered by dating shift. Factor names in dark type read a filed fundamental; those in
 grey use only price and volume. The eleven price-only factors carry an open marker rather than a bar on the
-period-end series: their shift is exactly zero, to machine precision. The survivorship series has no
+period-end series: their shift is exactly zero, to machine precision. The current-membership series has no
 zeros anywhere, and its largest movement, \fac{amihud\_illiquidity} at $+3.91$, belongs
 to a factor that dating bias cannot touch.}
 \label{fig:fingerprints}
 \end{figure}
 
-The distortions do not overlap. Figure~\ref{fig:fingerprints} shows both shift vectors on
-a common axis, and Table~\ref{tab:families} summarises them by factor family.
+The two signatures do not overlap. Figure~\ref{fig:fingerprints} shows both shift vectors
+on a common axis, and Table~\ref{tab:families} summarises them by factor family.
 
 \begin{table}[h]
 \centering
@@ -282,96 +419,82 @@ Liquidity and volatility & Untouched & Sign flips, false positives \\
 Direction of effect & Uniform inflation & Relocation, not inflation \\
 \bottomrule
 \end{tabular}
-\caption{The two distortions by factor family.}
+\caption{The two signatures by factor family.}
 \label{tab:families}
 \end{table}
 
-Quantitatively, the two shift vectors across the twenty-two factors correlate at
-$-0.088$. They are not two versions of ``results look better''; they are close to
-independent directions in factor space. They also disagree in sign on value: dating
-inflates \fac{earnings\_yield} and \fac{roe} by $+0.98$ and $+1.07$ $t$-units,
-survivorship deflates them by $-1.28$ and $-1.24$.
+Quantitatively, the two vectors correlate at $-0.088$ across the twenty-two factors. They
+are not two versions of ``results look better''; they are close to independent directions
+in factor space. They also disagree in sign on value: dating inflates
+\fac{earnings\_yield} and \fac{roe} by $+0.98$ and $+1.07$ $t$-units, universe
+conditioning deflates them by $-1.28$ and $-1.24$.
 
 One property is a hard constraint rather than a tendency. Under dating bias the eleven
 price-only factors are unchanged to machine precision, because they never read a filed
 figure. An anomalously strong illiquidity result therefore cannot be produced by dating
-bias, whatever else is true of the study.
+bias, whatever else is true of the study. This is the exclusion restriction of
+Section~\ref{sec:framework} in its strongest available form, and it does most of the
+discriminating work without any assumption on $\tau$.
 
-\subsection{The proposed inversion, and what it would require}
-\label{sec:inversion}
+Read forward, the two signatures give the diagnostic its content. A study with a
+suspiciously strong illiquidity premium and a dead low-volatility anomaly has a universe
+problem. A study whose value and quality factors clear $t = 2$ while its price factors
+look ordinary has a dating problem. Section~\ref{sec:protocol} states what has to be
+measured before either reading may be given a confidence.
 
-This structure suggests reading the implication backwards. A study with a suspiciously
-strong illiquidity premium and a dead low-volatility anomaly has a universe problem. A
-study whose value and quality factors clear $t = 2$ while its price factors look ordinary
-has a dating problem.
-
-Formally, model an observed table of $t$-statistics as
-\begin{equation}
-t = \tau + \delta_b + \varepsilon,
-\end{equation}
-where $\tau$ is the study's true factor performance, $\delta_b$ is the signature of bias
-$b$ (measured, with $\delta_{\text{none}} = 0$), and $\varepsilon$ is sampling noise.
-Since $\tau$ is unknown and twenty-two dimensional, $b$ is not identified without further
-structure. Three sources of structure are available, in increasing order of assumption:
-exclusion from the exact-zero constraint of Section~\ref{sec:dating}; within-family
-contrasts that absorb the unknown level of $\tau$; and projection onto each signature
-after removing family means, whose reference distribution under exchangeable $\tau$
-yields a $p$-value rather than a label.
-
-We state plainly that this inversion is proposed and not tested. Four conditions would
-have to hold, and each is a gate rather than a caveat:
-
-\begin{enumerate}
-\item \textbf{Signature stability.} The shift vectors must be properties of the errors,
-not of the 2014--2026 sample. This requires re-measurement on disjoint subperiods and
-random half-universes.
-\item \textbf{Signature uncertainty.} A point estimate cannot support a test. The
-sampling covariance of each shift vector must be estimated.
-\item \textbf{Separability under realistic noise.} Whether the two errors remain
-separable at the noise level of a twelve-year study is an empirical question.
-\item \textbf{Calibration before application.} Any output must be a $p$-value or a
-posterior with a reference distribution behind it, never a bare label.
-\end{enumerate}
-
-Labelled data for the third gate is free: biased panels are generated by the pipeline
-itself, so the inversion can be validated at scale without any external dataset or
-annotation.
-
-\section{Limitations}
+\section{Scope conditions}
 \label{sec:limits}
 
+The framework transfers to any setting where a correct pipeline can be re-run under a
+defective convention. The two signatures calibrated here transfer less far, and the
+following conditions bound them.
+
 \begin{itemize}
-\item One index, one country, 2010--2026. The fingerprints are measured on the S\&P 500
-and should not be assumed to transfer to small caps or non-US markets.
+\item One index, one country, 2010--2026. The signatures are measured on the S\&P 500 and
+should not be assumed to hold for small caps or non-US markets. Re-measurement is a run of
+the generator, not a new study.
 \item Membership spells are reconstructed from a public wiki revision history, not CRSP.
-The survivorship arm inherits whatever that approximation gets wrong.
+The universe signature inherits whatever that approximation gets wrong.
 \item Fundamental coverage begins in 2010 because of the XBRL mandate phase-in, so the
-dating arm cannot speak to the pre-XBRL era.
-\item The two arms are not additively decomposable. The survivorship arm rebuilds forward
-returns per universe, because a biased study never observes the returns of the names it
-excludes. Real studies contain several errors at once and the signatures may not compose.
-\item A study reporting five factors gives a five-dimensional observation, and the
-exclusion constraint does not apply at all if none of them are price-only.
-\item The inversion in Section~\ref{sec:inversion} is untested. Sections~\ref{sec:dating}
-and~\ref{sec:surv} are measurements.
+dating signature says nothing about the pre-XBRL era.
+\item The two arms are not additively decomposable. The universe arm rebuilds forward
+returns per universe, because a study with that defect never observes the returns of the
+names it excludes. Real studies contain several defects at once, and whether signatures
+compose is a question for gate three.
+\item The diagnostic needs a wide enough table to work with. A study reporting five
+factors gives a five-dimensional observation, and the exclusion restriction does not apply
+at all if none of the five are price-only.
+\item Gates one through three of Section~\ref{sec:protocol} have not been run. The
+signatures are measurements; the test built on them is specified but not yet calibrated.
 \end{itemize}
 
 \section{Conclusion}
 
-Two common data-handling errors distort a factor study in different and identifiable
-ways. The period-end join inflates fundamental factors uniformly by 59\% of true IC and
-manufactures four false discoveries while leaving price factors provably untouched.
-Current-membership conditioning relocates rather than inflates, flipping illiquidity to
-significance and inverting the low-volatility anomaly, through a channel better described
-as a forward-looking growth filter than as a survival filter.
+Data-handling defects have shapes. A period-end join inflates fundamental factors
+uniformly by 59\% of true IC and manufactures four false discoveries while leaving price
+factors provably untouched. Conditioning a universe on current membership relocates rather
+than inflates, flipping illiquidity to significance and inverting the low-volatility
+anomaly, through a channel better described as a forward-looking growth filter than as a
+survival filter. Neither shape is visible in a Sharpe ratio, and both are visible in the
+cross-section of what a study reports.
 
-Neither distortion is visible in a Sharpe ratio. Both are visible in the cross-section of
-what a study reports. Whether that visibility supports reliable inference from a table to
-its underlying error is the open question, and Section~\ref{sec:inversion} states what
-would have to be established before it could be claimed.
+Bias fingerprinting takes that observation and builds a method on it: measure the shape
+once on a pipeline you own, then test for it in tables you do not. The pieces the method
+needs are in place. A generator that isolates one convention at a time, two signatures
+that are near-orthogonal and carry an exact exclusion restriction, an inference model that
+absorbs unknown true performance through family contrasts, and a protocol whose hardest
+step has free labelled data because the labels are generated rather than collected.
+
+What comes next is the protocol, in its stated order. Re-measure both signatures on
+disjoint subperiods and random half-universes; bootstrap their sampling covariance;
+simulate the confusion matrix at the noise level of a twelve-year study. If two defects as
+different as these two prove separable under realistic noise, the same generator supports
+calibration of the rest of the catalogue: delisting-return assumptions, restatement
+handling, index-reconstitution timing. Each is a convention a correct pipeline already has
+an opinion about, which means each already has a signature waiting to be measured.
 
 \paragraph{Reproduction.} All results reproduce with \texttt{make bias}. The dating arm is
-\texttt{scripts/pit\_vs\_naive.py}; the survivorship arm is
+\texttt{scripts/pit\_vs\_naive.py}; the universe arm is
 \texttt{scripts/survivorship.py}. Per-factor outputs are written to
 \texttt{reports/pit\_vs\_naive.csv} and \texttt{reports/survivorship.csv}. Prices are
 fetched per user rather than redistributed. The point-in-time fundamentals layer and the

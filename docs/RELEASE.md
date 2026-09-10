@@ -3,18 +3,22 @@
 What this project can publish, in what form, under what licence — and, as
 important, what it cannot publish and why.
 
-Counts below are **measured**, not projected. The corpus extraction was stopped
-at 163 filings on 2026-09-08 after the extractor search closed without finding a
-configuration that was both accurate enough and fast enough to run the remaining
-2,201 — see `EXTRACTION.md`. What ships is therefore a benchmark, a measured
-model frontier, and a pilot graph, rather than the full corpus this document
-originally anticipated.
+Counts below are **measured**, not projected.
+
+The released graph is the E5 pilot: 163 filings extracted under the most accurate
+configuration on the frontier (`qwen3:32b`, F1 0.857 at 270s per filing), stopped
+on 2026-09-08 at the coverage report the pre-registration commits to. A separate
+corpus run under E10 (`qwen3:30b-a3b`, F1 0.792 at 13s per filing) is under way to
+supply the pre-registered signal test, which needs coverage rather than precision.
+The release stays on E5, where a false edge is a permanent defect; see
+`EXTRACTION.md` for why the two artefacts take different points on the same
+frontier.
 
 ## What is actually new here
 
 `HYPOTHESIS.md` concluded, after checking the literature, that the return result
-is a replication rather than a discovery. That makes the artefacts the primary
-contribution, and it changes what the release is for:
+is a replication rather than a discovery. That makes the construction protocol
+and its artefacts the primary contribution, and it fixes what the release is for:
 
 1. **An extraction benchmark with auditable negatives.** Ten filings, 55
    links, five of them deliberately empty-but-rich, and every *excluded* name
@@ -28,10 +32,10 @@ contribution, and it changes what the release is for:
    count does not order the results — are in `EXTRACTION.md`.
 3. **A point-in-time link graph from filing prose**, 163 filings across 38
    issuers, every edge keyed to the disclosure date with an explicit validity
-   interval. A pilot at this size, not the corpus originally planned.
+   interval. A pilot at this size.
 
-The first two are the contribution. The third is a demonstration that the
-pipeline produces what it claims to.
+The first two are what someone else can build on. The third demonstrates that
+the protocol produces what it claims to, at the scale currently extracted.
 
 ---
 

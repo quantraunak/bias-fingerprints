@@ -1,50 +1,123 @@
 # Point-in-Time US Equity Research
 
-Two studies on one point-in-time data substrate: prices and index membership that
-know what was true on each historical date, and SEC filings keyed to the day they
-were filed rather than the period they describe.
+Two research frameworks and the point-in-time data substrate they share: prices and
+index membership that know what was true on each historical date, and SEC filings keyed
+to the day they were filed rather than the period they describe.
 
-**Paper: [Two Bugs, Two Fingerprints](paper/bias_fingerprints.pdf)** (7pp, LaTeX source
-in [`paper/`](paper/)). Measures what two common data-handling errors do to the same
-22-factor study, holding everything else fixed. A period-end join inflates mean IC by
-**59%** and manufactures **four** false discoveries while leaving price-only factors
-unchanged to machine precision. Current-membership conditioning does not inflate at all:
-it *relocates*, flipping `amihud_illiquidity` from t = -1.11 to **+2.80** and inverting
-the low-volatility anomaly. The two distortions correlate at **-0.088**, which is the
-observation the paper is built on.
+**Paper: [Bias Fingerprints](paper/bias_fingerprints.pdf)** (9pp, LaTeX source in
+[`paper/`](paper/)) proposes the first of them.
 
-## What is in here
+---
 
-**1. Economic links from filing text — the extraction result stands; the return study stopped at the coverage report.**
+## 1. Bias fingerprinting
+
+**A method for auditing factor research from the outside.**
+
+A factor table is usually all an outside reader gets. An allocator reads a manager's IC
+table, a referee reads a submitted backtest, a desk prices a vendor signal. None of them
+can run the pipeline that produced the numbers, and the literature on look-ahead and
+survivorship bias is written for someone who can: date the fundamentals correctly, build
+the universe point-in-time, shift a feature forward and check the result degrades. It
+assumes the reader controls the code.
+
+Bias fingerprinting reverses that direction. A data-handling defect is not a scalar
+amount of inflation but a *direction* in factor space, and the direction is a property of
+the defect rather than of the study it damages. Measure the direction once on a pipeline
+you own; then test for it in tables you do not.
+
+The framework has four parts:
+
+**A generator.** One factor study, re-run under alternative data conventions with
+prices, universe, tradability screen, forward returns and evaluation code held fixed. The
+difference between two arms is attributable to the convention and to nothing else.
+
+**A signature.** `δ_b = t_b − t_pit`, the vector of t-statistic shifts a defect `b`
+induces across the factor cross-section, one component per factor.
+
+**An inference model.** An observed table is `t = τ + δ_b + ε`, with true performance `τ`
+unknown and twenty-two dimensional. Identification comes from three sources rather than a
+fitted classifier: *exclusion* (dating bias cannot move a factor that never reads a filed
+figure, so a study whose strongest results sit in that block is not a dating-bias study,
+whatever τ is), *within-family contrast* (family means absorb τ), and *projection* onto
+each signature after removing family means, which has a computable reference distribution
+and so yields a p-value rather than a label.
+
+**A validation protocol.** Four gates, in order, each of which ends the method rather
+than downgrading it: signature stability across subperiods and half-universes, signature
+sampling covariance, separability under realistic noise, and only then calibrated
+application. Full statement in [`docs/FINGERPRINT.md`](docs/FINGERPRINT.md).
+
+### Two signatures, calibrated
+
+Measured on the generator described below, changing one convention at a time.
+
+| | Period-end join | Current-membership universe |
+|---|---|---|
+| Mean IC | **+59%** among the 11 factors that read a filed figure | **−0.0043** across all 22 |
+| Direction | Uniform inflation | Relocation, not inflation |
+| Price and volume factors | **Unchanged, exactly** (max drift 0.0e+00) | Heavily distorted |
+| False positives | 4 (`earnings_yield`, `cash_flow_yield`, `roe`, `accruals`) | 2, incl. one with the wrong sign |
+| Largest single move | `accruals`, +1.77 t | `amihud_illiquidity`, **+3.91 t** |
+
+The two signature vectors correlate at **−0.088** and disagree in sign on value: dating
+inflates `earnings_yield` and `roe` by +0.98 and +1.07 t-units, current membership
+deflates them by −1.28 and −1.24. A table cannot be explained by both, which is what makes
+the diagnostic feasible.
+
+Under current-membership conditioning, `amihud_illiquidity` flips from t = −1.11 to
+**+2.80** and the low-volatility anomaly inverts. The channel is not the survival filter
+usually named. The biased panel wrongly *includes* 203 names a day that had not yet been
+admitted to the index, against 88 it wrongly excludes, and the included cohort is a third
+the size and a third the liquidity of a genuine constituent. Conditioning on current
+membership is a forward-looking growth filter, and that mechanism predicts the shape of
+the signature before the signature is measured.
+
+A fixed 45-day filing lag, by contrast, inflates mean IC by only 9% and manufactures no
+false discoveries in this sample. Approximately right and wrong are different things, and
+only the second leaves a signature worth testing for.
+
+### Status
+
+Framework specified, generator built, two signatures calibrated and reproducible with
+`make bias`. Gates one through three have not been run, and the ordering is part of the
+method: a diagnostic that reports a label without a calibrated reference distribution is
+worse than no diagnostic. Gate three is the one that would normally be blocked on labelled
+data, and it is free here — biased panels come out of the generator, so the confusion
+matrix can be simulated with no annotation and no external dataset.
+
+Measurements in [`docs/BIAS.md`](docs/BIAS.md), method in
+[`docs/FINGERPRINT.md`](docs/FINGERPRINT.md), paper in [`paper/`](paper/).
+
+---
+
+## 2. Point-in-time economic-link extraction
+
+**A construction protocol for dated firm-relationship graphs from filing text, with the
+benchmark and cost frontier needed to build one.**
 
 Companies name each other in their 10-Ks. *"Intel is one of our most significant
-customers."* *"We purchase substrates from Ibiden and Unimicron."* Nobody sells a
-map of those disclosures: the vendor supply-chain products cover the large,
-obvious links, and the academic text-based networks measure product-description
-*similarity* rather than stated relationships.
+customers."* *"We purchase substrates from Ibiden and Unimicron."* Nobody sells a map of
+those disclosures: the vendor supply-chain products cover the large, obvious links, and
+the academic text-based networks measure product-description *similarity* rather than
+stated relationships.
 
-Returns are known to propagate along supply-chain links with a delay, and the
-effect is known to concentrate where investors pay least attention. That is
-established literature, not a claim of this repository — see the
-[prior-work note](docs/HYPOTHESIS.md#prior-work-checked-2026-09-07--after-the-design-was-fixed-before-any-result).
+What does not exist publicly is the graph as a *point-in-time historical series*. The
+nearest published work extracts firm networks from filings for 42 firms in a single fiscal
+year. The protocol here targets 160 issuers across 2012–2025, with every edge keyed to the
+date it was disclosed and carrying a validity interval, so the graph can be asked what it
+looked like on any past date.
 
-What does not exist publicly is the graph itself as a *point-in-time historical
-series*. The nearest published work extracts firm networks from filings for 42
-firms in a single fiscal year. This builds 160 issuers across 2012–2025, with
-every edge keyed to the date it was disclosed and a validity interval, so the
-graph can be asked what it looked like on any past date.
+The protocol has three parts:
 
-The return test was therefore a **validation, not a discovery**. It was never
-run: the corpus stopped at 163 filings when no extractor could be found that was
-both accurate enough and fast enough to read the remaining 2,201 on one laptop.
-The pre-registration commits the study to stopping at the coverage report if
-density does not reach the cross-section, and that is what happened — the signal
-section of [`docs/SPECIFICATIONS.md`](docs/SPECIFICATIONS.md) is empty because no
-forward return has been regressed on any graph-derived quantity.
+**A benchmark with auditable negatives.** Ten filings, 55 links, five of them
+deliberately empty-but-rich, and every *excluded* name listed with the rule that excluded
+it ([`docs/gold_exclusions.md`](docs/gold_exclusions.md)). Benchmarks for this task
+normally publish positives only, which makes precision unfalsifiable.
 
-**What the search produced instead is the result**:
-[what reliable relation extraction from filings actually costs](docs/EXTRACTION.md).
-Six model configurations on one annotated sample with auditable negatives:
+**A measured cost/quality frontier.** Six extractor configurations on one annotated
+sample, on hardware a single person owns
+([`docs/EXTRACTION.md`](docs/EXTRACTION.md), regenerated offline by
+`scripts/benchmark_table.py`):
 
 | model | F1 | s/filing | FP on empty filings | direction errors | recall on 10+ names |
 |---|---|---|---|---|---|
@@ -54,43 +127,63 @@ Six model configurations on one annotated sample with auditable negatives:
 | `qwen3:32b` no-reasoning | 0.558 | 206 | **26** | **8** | 0.553 |
 | `qwen3:14b` | 0.462 | 32 | 3 | 0 | **0.158** |
 
-Three findings aggregate F1 hides. The five deliberately-empty filings separate
-usable from unusable models by an order of magnitude where F1 differs by less
-than two. Reasoning's contribution is preventing relation *inversions*, not
-finding more links — it also returns fewer. And a 20x-faster mixture-of-experts
-model is **perfect** on filings naming one to nine counterparties and loses a
-third on those naming ten or more: its deficit is length, not quality.
+Three findings aggregate F1 hides. The five deliberately-empty filings separate usable
+from unusable models by an order of magnitude where F1 differs by less than two.
+Reasoning's contribution is preventing relation *inversions*, not finding more links — it
+also returns fewer. And a 20x-faster mixture-of-experts model is **perfect** on filings
+naming one to nine counterparties and loses a third on those naming ten or more: its
+deficit is length, not quality.
+
+**A pre-registered coverage gate.** Returns are known to propagate along supply-chain
+links with a delay, and the effect is known to concentrate where investors pay least
+attention — established literature, not a claim of this repository, see the
+[prior-work note](docs/HYPOTHESIS.md#prior-work-checked-2026-09-07--after-the-design-was-fixed-before-any-result).
+The return test is therefore a **validation of the graph, not a discovery**, and the
+[pre-registration](docs/HYPOTHESIS.md) commits the study to stopping at the coverage
+report if edge density does not reach the cross-section.
+
+The gate has already fired once, and the frontier is what resolved it. Under the most
+accurate configuration — `qwen3:32b`, F1 0.857 at 270s per filing — the corpus stalled at
+163 filings, giving 35 source firms and a median of 4 names per date. A cross-sectional
+rank correlation over 4 names is undefined, so the study stopped at the coverage report,
+for lack of coverage rather than lack of signal.
+
+The frontier then said which way to move. Missing edges attenuate a real effect rather
+than manufacturing a false one, while four names per date make any effect undetectable, so
+the corpus run switched to `qwen3:30b-a3b`: F1 0.792 instead of 0.857, 13s per filing
+instead of 270, all 2,364 filings in about nine hours instead of thirteen days. That run
+is under way. The released graph stays on the more accurate configuration, where a false
+edge is a permanent defect rather than attenuation — the two artifacts have opposite
+failure modes and the frontier is what makes choosing a different point for each a
+measurement rather than a preference.
+
+**No forward return has been regressed on any graph-derived quantity.**
+`scripts/run_signal_test.py` implements the falsification table as pre-registered:
+overlap-corrected IC t-statistic, 20 degree-preserving placebo shuffles, second- against
+first-order links, quintile monotonicity, and coverage reported before any return is
+regressed. It runs once, when the corpus is complete. The signal section of
+[`docs/SPECIFICATIONS.md`](docs/SPECIFICATIONS.md) is empty until then, and it was written
+before the corpus existed so the denominator for a future multiple-testing correction is
+honest.
+
+What ships today is the benchmark, the frontier, and the pilot graph: 163 filings, 38 of
+160 issuers, 264 edges.
 
 The hypothesis, its falsification table and its placebo test were
-[written and committed before the extraction corpus existed](docs/HYPOTHESIS.md),
-so the design cannot be reverse-engineered from the result. Every choice made
-since is logged in `SPECIFICATIONS.md`, including five rejected extractor
-configurations and the measurement that killed each one.
+[committed before any extraction ran](docs/HYPOTHESIS.md), so the design cannot be
+reverse-engineered from the result. Every choice made since is logged in
+`SPECIFICATIONS.md`, including every configuration that was rejected and the measurement
+that killed it.
 
-Status: benchmark and frontier complete and reproducible offline
-(`scripts/benchmark_table.py`). Graph is a pilot — 163 filings, 38 of 160
-issuers, 264 edges. Release plan in [`docs/RELEASE.md`](docs/RELEASE.md),
-datasheet in [`docs/DATASHEET.md`](docs/DATASHEET.md).
-
-**2. A 22-factor long-short study — complete.**
-
-The cross-sectional signal below, and two findings that came out of auditing it:
-that a period-end join inflates measured factor IC by 59% and manufactures four
-spurious significances, and that conditioning on current index membership
-invents an illiquidity premium. Both in [`docs/BIAS.md`](docs/BIAS.md).
-
-**3. Shared infrastructure.** Point-in-time index membership from reconstructed
-spells, SEC XBRL keyed on filing date, an entity resolver from filing text to
-tickers, and a hand-annotated benchmark for relationship extraction with
-[auditable negatives](docs/gold_exclusions.md).
+Release plan in [`docs/RELEASE.md`](docs/RELEASE.md), datasheet in
+[`docs/DATASHEET.md`](docs/DATASHEET.md).
 
 ---
 
-## The factor study
+## 3. The reference study
 
-A cross-sectional signal over 22 published factors, each signed to its published
-direction, evaluated on a purged and embargoed walk-forward before any portfolio
-is constructed.
+**A 22-factor long-short cross-section on the shared substrate.** It is the generator the
+bias-fingerprinting framework is calibrated on, and it is complete in its own right.
 
 | | |
 |---|---|
@@ -100,10 +193,15 @@ is constructed.
 | Universe | 727 names, point-in-time membership, prices from 2004 |
 | Fundamentals | SEC EDGAR XBRL, 648 issuers, keyed on filing date, usable from 2010 |
 
-The signal carries information. The section on
-[beta decomposition](#beta-decomposition) shows how much of it survives once the market
-exposure embedded in the decile spread is charged against it — which is the question
-that decides whether a factor study is a strategy.
+Two results from auditing it generalise past this study, and both are reported below:
+[59% of an apparently significant decile spread is market beta](#beta-decomposition), and
+[a single backtest Sharpe from a stochastically fitted model is a draw from a
+distribution five times as wide as the point estimate suggests](#robustness).
+
+**Shared infrastructure.** Point-in-time index membership from reconstructed spells, SEC
+XBRL keyed on filing date, an entity resolver from filing text to tickers, and a
+hand-annotated benchmark for relationship extraction with
+[auditable negatives](docs/gold_exclusions.md).
 
 Fundamental coverage begins in 2010, not 2004. The SEC's XBRL mandate phased in over
 2009–2011, so `companyfacts` returns nothing for earlier periods, and the first filings
@@ -111,8 +209,7 @@ carry backfilled historical statements whose filing dates are not the dates the 
 saw. The price panel and the twelve price factors run from 2004; the ten fundamental
 factors do not exist before 2009 and are not stable until 2011. Out-of-sample evaluation
 starts in 2014, so the headline figures are unaffected — but the panel should not be read
-as twenty-two years of fundamentals. This is measured in
-[`docs/BIAS.md`](docs/BIAS.md).
+as twenty-two years of fundamentals. This is measured in [`docs/BIAS.md`](docs/BIAS.md).
 
 [**Results dashboard**](https://quantraunak.github.io/ls-multifactor-research/) · [Data notes](docs/DATA.md)
 
@@ -131,14 +228,16 @@ on every build, so membership drift surfaces as a failure rather than an assumpt
 
 Applying *current* membership to a historical panel is the standard survivorship trap:
 every company that was ever deleted — acquired, bankrupted, demoted — becomes invisible,
-and the surviving sample is selected on exactly the outcome being predicted.
+and the surviving sample is selected on exactly the outcome being predicted. Section 1
+measures what that does to each of the twenty-two factors.
 
 ### Fundamentals that respect the filing date
 
 Every XBRL fact carries the date it was filed, which is what makes it usable in a
 backtest: a quarter ending 31 March is only visible once the 10-Q lands in May. The
 median filing lag in this panel is **34 days**. Joining on period end instead is the
-classic look-ahead in fundamental research.
+classic look-ahead in fundamental research, and it is the first of the two calibrated
+signatures.
 
 Three details in the XBRL feed each cost real coverage if handled naively:
 
@@ -179,6 +278,13 @@ turnover, and a liquidity *shock* rather than a level.
 **Fundamental.** Book-to-market, earnings yield, cash-flow yield, sales yield, gross
 profitability (Novy-Marx), ROE, operating margin, asset growth
 (Cooper–Gulen–Schill), accruals (Sloan), net share issuance (Pontiff–Woodgate).
+
+The split is what supplies the exclusion restriction in Section 1: eleven factors read a
+filed figure and eleven do not, so the second block cannot respond to the filing calendar
+by construction. `turnover_1m` is the one factor that looks price-only and is not, because
+it divides by shares outstanding. Dating sensitivity is determined by measurement and
+checked against a declared set, so a factor that quietly acquires a filed input is
+surfaced rather than hidden among the controls.
 
 Horizons are specified in trading days throughout. Subtracting calendar days and
 calling them trading days compresses every lookback by roughly 1.45× — a 252-day
@@ -275,7 +381,8 @@ expected shape rather than a surprising one.
 ## Beta decomposition
 
 A decile spread with a t-statistic above 2 looks like a strategy. Regressing that spread
-on the market says otherwise, and this is the result the project is really about.
+on the market decides whether it is one, and this is the first of the two general results
+the reference study produced.
 
 | | |
 |---|---|
@@ -287,7 +394,9 @@ The long decile runs a beta of 1.10 against the short decile's 0.99 — a tilt t
 positive in 73% of months, over a window in which the market compounded at 13.7%.
 **59% of the apparent edge is market exposure rather than stock selection.** The factors
 doing the work are value and quality, and value is cyclical; the book was being paid for
-exposure it did not intend to take.
+exposure it did not intend to take. A decile-spread t-statistic reported without its
+beta decomposition is not a claim about stock selection, and that holds for any study of
+this shape rather than only this one.
 
 Residualising every factor against beta and size at the signal level was tried and made
 things worse: IC falls from 0.0165 to 0.0062, because at this horizon the value edge
@@ -311,30 +420,35 @@ identical economics:
 | CAGR | 2.03% | 2.95% | 0.38% | 0.90% | 1.80% | 1.97% | 1.67% ± 0.91% |
 
 **The signal is stable; the Sharpe is not.** IC varies by ±5% across seeds while Sharpe
-varies by a factor of five, 0.09 to 0.49. A single backtest Sharpe from a model with
-stochastic fitting is a draw from that distribution, and quoting one without the spread
-around it reports the draw as though it were the measurement. Every performance figure
-in this repository should be read against the dispersion in this table.
+varies by a factor of five, 0.09 to 0.49. This is the second general result: a single
+backtest Sharpe from a model with stochastic fitting is a draw from that distribution, and
+quoting one without the spread around it reports the draw as though it were the
+measurement. Every performance figure in this repository should be read against the
+dispersion in this table.
 
 ---
 
-## What this establishes, and what it does not
+## What the reference study establishes, and what it does not
 
-A defensible cross-sectional signal sits underneath this: value and quality factors,
+A defensible cross-sectional signal sits underneath it: value and quality factors,
 constructed on point-in-time data with filing-date-aware fundamentals, reaching IC
-t-statistics near 2 and a decile spread at t = 3.08 across 150 independent months.
+t-statistics near 2 and a decile spread at t = 3.08 across 150 independent months. That
+is what qualifies it as a generator — the correct arm has to be worth calibrating
+against.
 
 At this horizon and in this universe, the portfolio built on it does not clear a
 tradability bar. Most of the raw spread is beta; what remains after neutralising it is
 not statistically separable from zero at these costs. Large-cap US equity is the most
 heavily arbitraged cross-section available, and 22 public factors on free data is not
-where an edge in it is likely to be found — a study of this design is better read as a
-measurement of how much of a published anomaly stack survives correct construction.
+where an edge in it is likely to be found. The study is built and reported as a
+measurement of how much of a published anomaly stack survives correct construction, which
+is also exactly what a bias-fingerprinting generator needs to be.
 
-**Residual survivorship bias.** 278 of 990 historical members could not be priced —
+**Residual survivorship limitation.** 278 of 990 historical members could not be priced —
 Yahoo drops delisted tickers, and those are precisely the survivorship-relevant names.
 Survivorship bias is *reduced, not eliminated*, and the remainder flatters these
-results.
+results. It also bounds the second signature: `docs/BIAS.md` reports what that does to the
+measurement.
 
 ---
 
@@ -345,10 +459,10 @@ paper/
   bias_fingerprints.tex     the paper; `make` compiles, `make arxiv` tarballs
   make_figures.py           figure regenerated from the measured CSVs
 docs/
-  BIAS.md                   the two bias measurements, in full
-  FINGERPRINT.md            the proposed inversion and its four gates
-  HYPOTHESIS.md             link-study pre-registration, written before the data
-  SPECIFICATIONS.md         every choice tried, including the nine rejected
+  FINGERPRINT.md            the framework: generator, signature, inference, protocol
+  BIAS.md                   the two calibrated signatures, in full
+  HYPOTHESIS.md             link-protocol pre-registration, written before the data
+  SPECIFICATIONS.md         every choice tried, including the ones that failed
   EXTRACTION.md             cost/quality frontier for local relation extraction
   RESULT_01.md              a pre-registered hypothesis, rejected
   RELATED_WORK.md           literature checked before building, not after
@@ -365,8 +479,8 @@ project/
   scripts/
     build_data.py           download and cache; idempotent
     research.py             factor IC table -- the gate
-    pit_vs_naive.py         dating arm of the paper
-    survivorship.py         universe arm of the paper
+    pit_vs_naive.py         dating signature
+    survivorship.py         universe signature
     benchmark_table.py      extraction frontier, from cache, no GPU
     run_backtest.py         end to end
   tests/                    126 tests + 1 xfail, offline and deterministic
@@ -389,7 +503,7 @@ python -m scripts.robustness        # error bars
 pytest tests
 ```
 
-Reproduce the paper:
+Measure the signatures and reproduce the paper:
 
 ```bash
 make bias            # writes reports/pit_vs_naive.csv and reports/survivorship.csv
