@@ -248,9 +248,9 @@ footer{{padding-top:28px;border-top:1px solid var(--line);font-family:ui-monospa
   conventions, a <em>signature</em> per defect, an <em>inference model</em> that separates
   signature from unknown true performance, and a <em>validation protocol</em> of four gates
   that must pass before the diagnostic reports anything.</p>
-  <p><a href="https://github.com/quantraunak/ls-multifactor-research/blob/main/paper/bias_fingerprints.pdf">Read
-  the paper</a> · <a href="https://github.com/quantraunak/ls-multifactor-research/blob/main/docs/FINGERPRINT.md">method</a>
-  · <a href="https://github.com/quantraunak/ls-multifactor-research/blob/main/docs/BIAS.md">measurements</a></p>
+  <p><a href="https://github.com/quantraunak/bias-fingerprints/blob/main/paper/bias_fingerprints.pdf">Read
+  the paper</a> · <a href="https://github.com/quantraunak/bias-fingerprints/blob/main/docs/FINGERPRINT.md">method</a>
+  · <a href="https://github.com/quantraunak/bias-fingerprints/blob/main/docs/BIAS.md">measurements</a></p>
 </section>
 
 <section>
@@ -339,7 +339,7 @@ footer{{padding-top:28px;border-top:1px solid var(--line);font-family:ui-monospa
 </section>
 
 <footer>
-  Raunak Sood · <a href="https://github.com/quantraunak/ls-multifactor-research">source</a> ·
+  Raunak Sood · <a href="https://github.com/quantraunak/bias-fingerprints">source</a> ·
   every figure on this page is read from the run directory and the measured signatures at build time
 </footer>
 

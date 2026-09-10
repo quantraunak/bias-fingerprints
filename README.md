@@ -1,11 +1,12 @@
-# Point-in-Time US Equity Research
+# Bias Fingerprints
 
-Two research frameworks and the point-in-time data substrate they share: prices and
-index membership that know what was true on each historical date, and SEC filings keyed
-to the day they were filed rather than the period they describe.
+**A method for auditing factor research from the outside**, and the point-in-time
+substrate it is calibrated on: prices and index membership that know what was true on
+each historical date, and SEC filings keyed to the day they were filed rather than the
+period they describe.
 
 **Paper: [Bias Fingerprints](paper/bias_fingerprints.pdf)** (9pp, LaTeX source in
-[`paper/`](paper/)) proposes the first of them.
+[`paper/`](paper/)).
 
 ---
 
@@ -92,91 +93,16 @@ Measurements in [`docs/BIAS.md`](docs/BIAS.md), method in
 
 ## 2. Point-in-time economic-link extraction
 
-**A construction protocol for dated firm-relationship graphs from filing text, with the
-benchmark and cost frontier needed to build one.**
+**Moved to [`filing-links`](https://github.com/quantraunak/filing-links).**
 
-Companies name each other in their 10-Ks. *"Intel is one of our most significant
-customers."* *"We purchase substrates from Ibiden and Unimicron."* Nobody sells a map of
-those disclosures: the vendor supply-chain products cover the large, obvious links, and
-the academic text-based networks measure product-description *similarity* rather than
-stated relationships.
+A construction protocol for dated firm-relationship graphs from SEC filing text: a
+benchmark with auditable negatives, a measured extraction cost/quality frontier, and a
+pre-registered coverage gate. It shared a point-in-time substrate with the work above and
+nothing else, so it now has its own repository, with the history that makes its
+pre-registration verifiable.
 
-What does not exist publicly is the graph as a *point-in-time historical series*. The
-nearest published work extracts firm networks from filings for 42 firms in a single fiscal
-year. The protocol here targets 160 issuers across 2012–2025, with every edge keyed to the
-date it was disclosed and carrying a validity interval, so the graph can be asked what it
-looked like on any past date.
-
-The protocol has three parts:
-
-**A benchmark with auditable negatives.** Ten filings, 55 links, five of them
-deliberately empty-but-rich, and every *excluded* name listed with the rule that excluded
-it ([`docs/gold_exclusions.md`](docs/gold_exclusions.md)). Benchmarks for this task
-normally publish positives only, which makes precision unfalsifiable.
-
-**A measured cost/quality frontier.** Six extractor configurations on one annotated
-sample, on hardware a single person owns
-([`docs/EXTRACTION.md`](docs/EXTRACTION.md), regenerated offline by
-`scripts/benchmark_table.py`):
-
-| model | F1 | s/filing | FP on empty filings | direction errors | recall on 10+ names |
-|---|---|---|---|---|---|
-| `qwen3:32b` | **0.857** | 270 | 2 | 0 | 0.789 |
-| `qwen3:30b-a3b` (MoE) | 0.792 | **13** | 2 | 1 | 0.658 |
-| `llama3:8b` | 0.646 | 47 | **27** | 1 | 0.711 |
-| `qwen3:32b` no-reasoning | 0.558 | 206 | **26** | **8** | 0.553 |
-| `qwen3:14b` | 0.462 | 32 | 3 | 0 | **0.158** |
-
-Three findings aggregate F1 hides. The five deliberately-empty filings separate usable
-from unusable models by an order of magnitude where F1 differs by less than two.
-Reasoning's contribution is preventing relation *inversions*, not finding more links — it
-also returns fewer. And a 20x-faster mixture-of-experts model is **perfect** on filings
-naming one to nine counterparties and loses a third on those naming ten or more: its
-deficit is length, not quality.
-
-**A pre-registered coverage gate.** Returns are known to propagate along supply-chain
-links with a delay, and the effect is known to concentrate where investors pay least
-attention — established literature, not a claim of this repository, see the
-[prior-work note](docs/HYPOTHESIS.md#prior-work-checked-2026-09-07--after-the-design-was-fixed-before-any-result).
-The return test is therefore a **validation of the graph, not a discovery**, and the
-[pre-registration](docs/HYPOTHESIS.md) commits the study to stopping at the coverage
-report if edge density does not reach the cross-section.
-
-The gate has already fired once, and the frontier is what resolved it. Under the most
-accurate configuration — `qwen3:32b`, F1 0.857 at 270s per filing — the corpus stalled at
-163 filings, giving 35 source firms and a median of 4 names per date. A cross-sectional
-rank correlation over 4 names is undefined, so the study stopped at the coverage report,
-for lack of coverage rather than lack of signal.
-
-The frontier then said which way to move. Missing edges attenuate a real effect rather
-than manufacturing a false one, while four names per date make any effect undetectable, so
-the corpus run switched to `qwen3:30b-a3b`: F1 0.792 instead of 0.857, 13s per filing
-instead of 270, all 2,364 filings in about nine hours instead of thirteen days. That run
-is under way. The released graph stays on the more accurate configuration, where a false
-edge is a permanent defect rather than attenuation — the two artifacts have opposite
-failure modes and the frontier is what makes choosing a different point for each a
-measurement rather than a preference.
-
-**No forward return has been regressed on any graph-derived quantity.**
-`scripts/run_signal_test.py` implements the falsification table as pre-registered:
-overlap-corrected IC t-statistic, 20 degree-preserving placebo shuffles, second- against
-first-order links, quintile monotonicity, and coverage reported before any return is
-regressed. It runs once, when the corpus is complete. The signal section of
-[`docs/SPECIFICATIONS.md`](docs/SPECIFICATIONS.md) is empty until then, and it was written
-before the corpus existed so the denominator for a future multiple-testing correction is
-honest.
-
-What ships today is the benchmark, the frontier, and the pilot graph: 163 filings, 38 of
-160 issuers, 264 edges.
-
-The hypothesis, its falsification table and its placebo test were
-[committed before any extraction ran](docs/HYPOTHESIS.md), so the design cannot be
-reverse-engineered from the result. Every choice made since is logged in
-`SPECIFICATIONS.md`, including every configuration that was rejected and the measurement
-that killed it.
-
-Release plan in [`docs/RELEASE.md`](docs/RELEASE.md), datasheet in
-[`docs/DATASHEET.md`](docs/DATASHEET.md).
+The two projects still share `project/src/data` -- the universe, price and fundamentals
+layer -- which is vendored into both rather than published separately.
 
 ---
 
@@ -211,7 +137,7 @@ factors do not exist before 2009 and are not stable until 2011. Out-of-sample ev
 starts in 2014, so the headline figures are unaffected — but the panel should not be read
 as twenty-two years of fundamentals. This is measured in [`docs/BIAS.md`](docs/BIAS.md).
 
-[**Results dashboard**](https://quantraunak.github.io/ls-multifactor-research/) · [Data notes](docs/DATA.md)
+[**Results dashboard**](https://quantraunak.github.io/bias-fingerprints/) · [Data notes](docs/DATA.md)
 
 ## Data
 
