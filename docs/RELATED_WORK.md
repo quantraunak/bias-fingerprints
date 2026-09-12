@@ -146,3 +146,84 @@ passages should recover recall if the driver is count.
 
 If (1) fails, the honest output is a short negative note: bucket averages over
 small benchmarks manufacture trends, here is the case study.
+
+---
+
+## Literature check owed to the constructed design — done 2026-09-10
+
+`HYPOTHESIS_CARDINALITY.md` records this search as owed before the pilot scaled.
+It was run, and **it makes the claim smaller.**
+
+### Multi-needle NIAH already reports the phenomenon
+
+LangChain's multi-needle in a haystack work varies the number of inserted facts
+and reports directly that as the number of needles increases, retrieval
+decreases, and that reasoning over retrieved needles is worse than retrieval
+alone. It also reports the degradation beginning at shorter contexts in the
+multi-needle case (~25k tokens) than the single-needle case (~73k for GPT-4).
+
+That is the same qualitative claim as the hypothesis here. **"Nobody has isolated
+cardinality" is therefore wrong as stated in the section above, and is
+withdrawn.** The phenomenon is known.
+
+### What the search did not turn up
+
+No work found characterises recall as a function of item count for **structured
+extraction under constrained decoding**, holding input length fixed:
+
+* ExtractBench (arXiv 2602.12247) measures **schema breadth** — number of
+  distinct fields — not items in one repeated array.
+* JSONSchemaBench (arXiv 2501.10868) measures validity, coverage and efficiency
+  of constrained-decoding frameworks over 10k schemas, not recall against gold
+  as a function of array length.
+* Multi-needle NIAH is retrieval QA over synthetic inserted facts with context
+  length varying alongside needle count. The output is an answer, not a
+  schema-constrained array, so the grammar-masking mechanism this project flags
+  as its strongest competing explanation cannot arise there.
+
+### Honest positioning, replacing the claim above
+
+This is **a replication in a different output modality plus a
+characterisation**, not the discovery of an unmeasured axis:
+
+1. Replicates a known retrieval-QA effect in schema-constrained extraction.
+2. Holds input length exactly constant by construction, which the multi-needle
+   result does not — its degradation is entangled with context length.
+3. Estimates a **slope** (recall per doubling of `k`) rather than reporting that
+   a decline exists.
+4. Decomposes it across architecture x reasoning mode, which no found work does.
+5. Tests a mitigation that follows from the mechanism — input splitting.
+
+Items 2 through 5 are the contribution and they are real, but the paper's
+framing must lead with replication, not discovery. A reviewer who knows the
+multi-needle result and reads a discovery framing will stop reading there.
+
+### Framing, corrected again — 2026-09-10
+
+The section immediately above overstated the downgrade. "Replication plus
+characterisation, never discovery" reads as a retreat, and that is the wrong
+posture.
+
+The multi-needle result is an engineering blog post: GPT-4 and a handful of
+comparators, synthetic needles inserted into essays, retrieval QA, with needle
+count and context length varying together. It is good work and it establishes
+that the phenomenon is real. It is not a controlled study of the axis, and it is
+not in this modality.
+
+Building on it is what the literature is for. The standing position:
+
+* **Cite multi-needle prominently and early**, as the result that motivates the
+  question. Do not bury it, and do not claim the phenomenon as new.
+* **Claim the controlled measurement**, which is what is actually new here:
+  input length constant by construction rather than co-varying; a slope in
+  recall per doubling of `k` rather than an existence claim; real domain
+  sentences rather than inserted trivia; schema-constrained output, where
+  grammar masking is a candidate mechanism that cannot arise in free-form QA;
+  and a 2x2 that separates architecture from reasoning mode.
+* **Claim the mitigation**, if input splitting recovers the items, because a
+  measured axis with a working intervention is a usable result rather than a
+  characterisation.
+
+An extension that cites its antecedent clearly is a normal contribution. The
+failure mode to avoid is a discovery framing that a reviewer can puncture with
+one link, not the act of building on someone else's finding.

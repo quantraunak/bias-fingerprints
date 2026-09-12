@@ -73,13 +73,17 @@ def generate(
             "system": system,
             "prompt": prompt,
             "stream": False,
-            "format": schema,
             # Temperature 0: this is extraction, not generation. Any sampling
             # variance here shows up as graph edges that appear and disappear
             # between runs, which would make the backtest irreproducible.
             "options": {"temperature": 0, "num_ctx": CONTEXT_TOKENS,
                         "num_predict": num_predict},
     }
+    # Omitted entirely when schema is None, which is how the unconstrained
+    # decoding arm runs. Sending "format": null is not the same as sending
+    # nothing, and the arm under test is exactly this key's presence.
+    if schema is not None:
+        payload["format"] = schema
     if think is not None:
         payload["think"] = think
     body = json.dumps(payload).encode()
