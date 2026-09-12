@@ -53,6 +53,16 @@ does not inflate at all: mean IC \emph{falls} by $0.0043$ while \fac{amihud\_ill
 flips from $t = -1.11$ to $+2.80$ and the low-volatility anomaly inverts. The two
 signatures correlate at $-0.088$ and disagree in sign on value factors, which is what
 makes the diagnostic feasible.
+
+We then run the protocol. Both signatures are stable across disjoint subsamples and
+survive bootstrapping, but separability holds for only one of them. Against a
+$\tau$ resembling a real factor table, universe conditioning is recovered at 100\%
+accuracy while period-end dating is recovered at 52\% and labels 97\% of clean
+tables defective. The reason is geometric and measurable in advance: after removing
+family means the dating signature is smaller than the within-family variation of
+true performance and correlates $+0.543$ with it, so a clean table already supplies
+most of the defect's shape. This yields a condition a signature must satisfy before
+it can be used diagnostically, checkable without collecting a single reported table.
 \end{abstract}
 
 \section{Introduction}
@@ -495,6 +505,112 @@ problem. A study whose value and quality factors clear $t = 2$ while its price f
 look ordinary has a dating problem. Section~\ref{sec:protocol} states what has to be
 measured before either reading may be given a confidence.
 
+\section{Running the protocol}
+\label{sec:gates}
+
+Section~\ref{sec:protocol} commits to four gates. Gates one to three are run here.
+Each is computed from a cached per-date IC series for the three panels, which makes
+subperiod splits slices of that series and the bootstrap arithmetic rather than a
+sequence of panel rebuilds.
+
+\subsection{Gate 1: the signatures are stable}
+
+Both signatures were re-measured on four disjoint subsamples: the first and second
+halves of the window, and odd- and even-numbered months. Every subsample signature
+correlates with the full-sample vector between $+0.928$ and $+0.995$. The stated
+criterion was that \fac{amihud\_illiquidity} must move sharply positive under
+universe conditioning in every subsample; it moves $+16.27$, $+9.40$, $+13.65$ and
+$+11.86$ $t$-units respectively.
+
+The exclusion restriction was re-checked per subsample rather than only in
+aggregate. The maximum absolute shift on the eleven price-only factors under the
+dating defect is $\num{0.0e+00}$ in each of the four, so exact invariance is a
+property of the construction and not of the full-sample average. Gate 1 passes.
+
+\subsection{Gate 2: the signatures carry error bars}
+
+Two thousand bootstrap draws over dates give a sampling covariance for each
+signature. The largest shifts are estimated precisely: under the dating defect
+\fac{accruals} shifts $+8.10 \pm 0.41$ and \fac{roe} $+4.92 \pm 0.21$; under
+universe conditioning \fac{amihud\_illiquidity} shifts $+17.92 \pm 0.56$ and
+\fac{turnover\_1m} $-9.39 \pm 0.33$. The $-0.088$ correlation between the two
+signatures has a bootstrap 95\% interval of $[-0.126, -0.053]$, so near-orthogonality
+survives estimation rather than being an artefact of a point estimate. Gate 2 passes.
+
+\subsection{Gate 3: one signature is identified and one is not}
+
+Gate three simulates studies, applies a defect, adds sampling noise at the level
+this twelve-year window actually carries, and classifies by projection onto each
+candidate signature after removing family means. Labels are free because the
+generator produces them, so the confusion matrix is estimated over four thousand
+simulated studies per condition.
+
+The result depends entirely on one assumption, which is the point of running it.
+Under $\tau$ exchangeable within families -- the assumption the inference model of
+Section~\ref{sec:framework} is built on -- classification is near-perfect at
+99.8\% accuracy. Under a $\tau$ resembling the measured factor table, it splits:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Diagnostic & Accuracy & Worst class \\
+\midrule
+None vs.\ universe conditioning & 100.0\% & 100.0\% \\
+None vs.\ period-end dating & 52.1\% & 1.6\% \\
+Joint, four conditions & 50.8\% & 1.4\% \\
+\bottomrule
+\end{tabular}
+\caption{Gate 3 under a realistic $\tau$. The worst-class column is the criterion,
+because an average hides the failure that matters: calling a clean table defective.}
+\label{tab:gate3}
+\end{table}
+
+The universe diagnostic recovers both classes perfectly. The dating diagnostic
+labels 97\% of clean tables as defective and is unusable.
+
+The cause is measurable rather than inferred. Write $\tilde{x}$ for a vector with
+family means removed. Then $\lVert\tilde{\tau}\rVert = 10.02$,
+$\lVert\tilde{\delta}_\text{dating}\rVert = 6.42$ and
+$\lVert\tilde{\delta}_\text{universe}\rVert = 23.69$. The dating signature is
+\emph{smaller} than the within-family variation of true performance it must be
+separated from, and worse, it points the same way:
+$\operatorname{corr}(\tilde{\tau}, \tilde{\delta}_\text{dating}) = +0.543$, and the
+projection of $\tilde{\tau}$ onto the dating signature is $+0.85$ of it. A clean
+table already supplies six-sevenths of the defect's shape for free. The universe
+signature has the opposite geometry: correlation $-0.268$ with $\tilde{\tau}$ at
+more than twice its magnitude.
+
+A second, structural obstacle compounds it. The exclusion restriction was supposed
+to do the discriminating work without assumptions on $\tau$, but the family
+partition is nested inside the sensitivity partition. Value, quality and investment
+factors are entirely filing-sensitive; momentum, reversal and volatility are
+entirely price-only. Only the liquidity family spans both blocks. Within-family
+contrasts therefore give the excluded block almost no leverage on $\tau$ in the
+block where it is needed, and the strongest identification argument in the
+framework is unavailable to the test built on it.
+
+\subsection{What gate 3 establishes}
+
+The framework survives; one of its two instantiations does not. Read as a general
+condition, a signature is usable as a diagnostic when two things hold, and both are
+measurable before any table is diagnosed:
+
+\begin{enumerate}
+\item $\tilde{\delta}_b$ is large relative to $\lVert\tilde{\tau}\rVert$, and not
+positively aligned with it. Collinearity between a defect's shape and the true
+cross-section of factor performance is not a noise problem and does not improve
+with a longer sample.
+\item The excluded block spans factor families, so that within-family contrasts
+transmit information about $\tau$ from factors the defect cannot touch to factors
+it can.
+\end{enumerate}
+
+Universe conditioning satisfies both. Period-end dating fails both. That is a
+sharper statement than the framework had before the gates were run, and it is
+checkable for any future defect without collecting a single reported table.
+
 \section{Scope conditions}
 \label{sec:limits}
 
@@ -517,8 +633,14 @@ compose is a question for gate three.
 \item The diagnostic needs a wide enough table to work with. A study reporting five
 factors gives a five-dimensional observation, and the exclusion restriction does not apply
 at all if none of the five are price-only.
-\item Gates one through three of Section~\ref{sec:protocol} have not been run. The
-signatures are measurements; the test built on them is specified but not yet calibrated.
+\item Gates one through three are run in Section~\ref{sec:gates}. Gate four,
+calibrated application to reported tables, is not, and applies only to the universe
+signature: the dating signature does not survive gate three.
+\item The gate 3 simulation draws $\tau$ around this study's own measured factor
+table. That is the most realistic $\tau$ available, and it is one draw from one
+market and one window. A different factor cross-section could have a different
+alignment with the dating signature, which is an argument for measuring the
+alignment per application rather than assuming this one transfers.
 \end{itemize}
 
 \section{Conclusion}
@@ -538,17 +660,28 @@ that are near-orthogonal and carry an exact exclusion restriction, an inference 
 absorbs unknown true performance through family contrasts, and a protocol whose hardest
 step has free labelled data because the labels are generated rather than collected.
 
-What comes next is the protocol, in its stated order. Re-measure both signatures on
-disjoint subperiods and random half-universes; bootstrap their sampling covariance;
-simulate the confusion matrix at the noise level of a twelve-year study. If two defects as
-different as these two prove separable under realistic noise, the same generator supports
-calibration of the rest of the catalogue: delisting-return assumptions, restatement
-handling, index-reconstitution timing. Each is a convention a correct pipeline already has
-an opinion about, which means each already has a signature waiting to be measured.
+Running the protocol splits that claim in two. Both signatures are stable and both
+carry tight error bars, but only universe conditioning is separable from clean
+performance at the noise level of a twelve-year study. Period-end dating is not, and
+the reason generalises: its shape is nearly parallel to the true cross-section of
+factor performance, so a correct table already looks like a defective one. That is a
+property of the defect, not a shortage of data, and no longer window fixes it.
+
+What the framework gains from failing that gate is a condition rather than a caveat.
+A signature is diagnostically usable when it is large relative to within-family
+variation in true performance, not positively aligned with it, and its excluded
+block spans factor families. All three are measurable on a pipeline the analyst
+already owns, before any reported table is touched. The rest of the catalogue --
+delisting-return assumptions, restatement handling, index-reconstitution timing --
+can therefore be screened for usability at the point of calibration, and the ones
+that fail can be reported as measurements of what a defect costs without being
+promoted to diagnostics.
 
 \paragraph{Reproduction.} All results reproduce with \texttt{make bias}. The dating arm is
 \texttt{scripts/pit\_vs\_naive.py}; the universe arm is
-\texttt{scripts/survivorship.py}. Per-factor outputs are written to
+\texttt{scripts/survivorship.py}. Gates one to three are
+\texttt{scripts/gate\_ic\_series.py} followed by \texttt{scripts/gates.py}, with the
+full output in \texttt{reports/gates\_1\_to\_3.txt}. Per-factor outputs are written to
 \texttt{reports/pit\_vs\_naive.csv} and \texttt{reports/survivorship.csv}. Prices are
 fetched per user rather than redistributed. The point-in-time fundamentals layer and the
 membership spells are released under CC~BY~4.0.
