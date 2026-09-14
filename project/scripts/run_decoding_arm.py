@@ -82,9 +82,13 @@ def parse_loose(text: str) -> list[dict]:
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--arm", required=True, choices=["constrained", "unconstrained"])
-    p.add_argument("--model", default="qwen3:30b-a3b")
+    p.add_argument("--model", default="qwen3:14b")
+    p.add_argument("--num-ctx", type=int, default=32768,
+                   help="must exceed prompt + generation. The 30B MoE writes "
+                        "7,000-12,000 tokens unconstrained against an 8,192 window, "
+                        "so that arm was context-bound rather than measuring decoding.")
     p.add_argument("--levels", default="1,4,16")
-    p.add_argument("--num-predict", type=int, default=12000)
+    p.add_argument("--num-predict", type=int, default=24000)
     p.add_argument("--max-per-level", type=int, default=None,
                    help="cap replicates per k. Measurement noise falls as k grows -- "
                         "recall at k=16 averages over 16 items, at k=1 it is a coin "
@@ -115,7 +119,8 @@ def main() -> None:
         r = local_model.generate(
             extract.SYSTEM, prompt,
             extract.Extraction.model_json_schema() if args.arm == "constrained" else None,
-            model=args.model, timeout=1800, think=False, num_predict=args.num_predict)
+            model=args.model, timeout=2400, think=False,
+            num_predict=args.num_predict, num_ctx=args.num_ctx)
         if not r.ok:
             print(f"  {doc['doc_id']}: {r.error}", flush=True); continue
         links = extract.parse_response(r.text) if args.arm == "constrained" else parse_loose(r.text)

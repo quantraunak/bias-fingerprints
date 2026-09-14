@@ -107,7 +107,16 @@ nothing else, so it now has its own repository, with the history that makes its
 pre-registration verifiable.
 
 The two projects still share `project/src/data` -- the universe, price and fundamentals
-layer -- which is vendored into both rather than published separately.
+layer -- which is vendored into both rather than published separately. That vendoring is
+deliberate; the duplication of everything else was not. Until 2026-09-14 this repository
+still carried a byte-identical copy of the extraction docs, scripts and engine, and the
+two copies had already drifted: a fix to `local_model.py` landed in one and not the other,
+and a coverage report was written into the wrong project. Those files are gone from here.
+
+`project/src/graph` remains for now, because the cardinality experiment in
+`docs/HYPOTHESIS_CARDINALITY.md` runs against it. When that experiment resolves it moves
+to its own repository and takes a pinned copy of the extractor with it, which is the
+correct arrangement for a benchmark whose system under test is that extractor.
 
 ---
 

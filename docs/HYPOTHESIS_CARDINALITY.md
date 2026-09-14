@@ -404,3 +404,38 @@ text at scoring time, so a parser fix applies retroactively rather than costing
 a re-run — which mattered immediately, since the first loose parser returned
 zero links on output that contained perfectly good JSON behind a `<think>`
 block, and that would have scored as total recall failure.
+
+### The unconstrained arm was context-bound — corrected 2026-09-14
+
+Control 2 of this pre-registration says no cell may be token-limited at high `k`.
+It was verified for the constrained arm, which emits 74-268 tokens, and then not
+re-checked for the unconstrained arm, which emits 4-6x more. It should have been.
+
+`local_model.CONTEXT_TOKENS` was 8,192 and the prompt is ~2,270 tokens. Measured
+on the 30B MoE, unconstrained generation produced:
+
+| k | output tokens | prompt + output vs 8,192 window |
+|---|---|---|
+| 1 | ~4,700 | 6,970, fits |
+| 4 | ~5,900 | 8,148, at the wall |
+| 16 | 7,100-12,000 | over, 4 of 6 truncated mid-JSON |
+
+Truncated documents parse to zero links and score as total recall failure, so the
+arm would have reported constrained decoding as hugely superior at exactly the
+level that decides the study. **The earlier unconstrained numbers (+0.033 at k=1,
+-0.014 at k=4) are withdrawn**; only k=1 was clean.
+
+Raising the window on the 30B is not possible here. `llama-server` holds 18.7 GB
+with that model loaded on a 36 GB machine, and both 16k and 32k context attempts
+were killed by memory pressure.
+
+**The decoding comparison moves to `qwen3:14b` at `num_ctx` 32,768.** Verified on
+a k=16 document: constrained 752 tokens and unconstrained 448, both with
+`done_reason=stop`, both parsing (10 and 7 links against 16 gold). The context no
+longer binds either arm.
+
+Two consequences to state rather than bury. The model is dense rather than MoE,
+so this arm speaks to decoding mode and not to architecture, and it is a different
+model from cell D. And the 18x token ratio reported earlier is a property of the
+30B MoE's unconstrained verbosity, not of unconstrained decoding: the same
+document on the 14B costs 448 tokens against 752 constrained, a ratio below one.

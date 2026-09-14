@@ -5,7 +5,7 @@ universe:
 	python project/scripts/build_universe.py --source sp500_wikipedia_snapshot
 
 test:
-	pytest -q project/tests
+	python3 -m pytest -q project/tests
 
 run:
 	python project/run_backtest.py --config project/configs/default.yaml
@@ -19,8 +19,8 @@ bias-dating:
 bias-survivorship:
 	cd project && python scripts/survivorship.py
 
-# Writes the redistributable point-in-time layer to project/dist/.
-dataset:
-	cd project && python scripts/export_dataset.py
+# Gates one to three of the validation protocol.
+gates:
+	cd project && python3 scripts/gate_ic_series.py && python3 scripts/gates.py
 
-.PHONY: install universe test run bias bias-dating bias-survivorship dataset
+.PHONY: install universe test run bias bias-dating bias-survivorship gates

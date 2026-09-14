@@ -60,6 +60,7 @@ def generate(
     retries: int = 2,
     think: bool | None = None,
     num_predict: int = DEFAULT_NUM_PREDICT,
+    num_ctx: int = CONTEXT_TOKENS,
 ) -> Response:
     """Extract with a local model. `think` disables reasoning where supported.
 
@@ -76,7 +77,7 @@ def generate(
             # Temperature 0: this is extraction, not generation. Any sampling
             # variance here shows up as graph edges that appear and disappear
             # between runs, which would make the backtest irreproducible.
-            "options": {"temperature": 0, "num_ctx": CONTEXT_TOKENS,
+            "options": {"temperature": 0, "num_ctx": num_ctx,
                         "num_predict": num_predict},
     }
     # Omitted entirely when schema is None, which is how the unconstrained
