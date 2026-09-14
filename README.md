@@ -113,10 +113,10 @@ still carried a byte-identical copy of the extraction docs, scripts and engine, 
 two copies had already drifted: a fix to `local_model.py` landed in one and not the other,
 and a coverage report was written into the wrong project. Those files are gone from here.
 
-`project/src/graph` remains for now, because the cardinality experiment in
-`docs/HYPOTHESIS_CARDINALITY.md` runs against it. When that experiment resolves it moves
-to its own repository and takes a pinned copy of the extractor with it, which is the
-correct arrangement for a benchmark whose system under test is that extractor.
+The extraction engine has left too. It now lives only in `filing-links`, with a pinned
+copy vendored into [`cardinality-eval`](https://github.com/quantraunak/cardinality-eval),
+which benchmarks it and so needs the exact version its results describe. What remains here
+is the factor study, the two calibrated signatures, and the validation protocol.
 
 ---
 
