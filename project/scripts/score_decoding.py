@@ -20,9 +20,12 @@ from run_decoding_arm import parse_loose
 from score_cardinality import _subsumes
 
 DOCS = {d["doc_id"]: d for d in json.loads((PROCESSED / "cardinality_docs.json").read_text())}
+# qwen3:14b at num_ctx 32768. The 30B arm was context-bound -- it wrote 7,000 to
+# 12,000 tokens unconstrained against an 8,192 window -- so both arms moved to a
+# model whose generation fits. See HYPOTHESIS_CARDINALITY.md, 2026-09-14.
 ARMS = {
-    "constrained":   (PROCESSED / "cardinality_runs" / "D", False),
-    "unconstrained": (PROCESSED / "decoding_runs" / "qwen3_30b-a3b_unconstrained", True),
+    "constrained":   (PROCESSED / "decoding_runs" / "qwen3_14b_constrained", False),
+    "unconstrained": (PROCESSED / "decoding_runs" / "qwen3_14b_unconstrained", True),
 }
 
 

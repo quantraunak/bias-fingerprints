@@ -439,3 +439,56 @@ so this arm speaks to decoding mode and not to architecture, and it is a differe
 model from cell D. And the 18x token ratio reported earlier is a property of the
 30B MoE's unconstrained verbosity, not of unconstrained decoding: the same
 document on the 14B costs 448 tokens against 752 constrained, a ratio below one.
+
+---
+
+## Result — 2026-09-14
+
+Both arms complete, `qwen3:14b` at `num_ctx` 32,768, 75 documents each, matched.
+Zero truncations, maximum 686 tokens against a 24,000 ceiling.
+
+| k | constrained recall | unconstrained recall | paired diff | p |
+|---|---|---|---|---|
+| 1 | 0.440 | 0.640 | +0.200 | 0.096 |
+| 4 | 0.640 | 0.530 | -0.110 | 0.110 |
+| 16 | 0.554 | 0.426 | **-0.128** | **0.005** |
+
+**The pre-registered test, applied per decoding mode:**
+
+| arm | drop, `k<=3` to `k>=16` | Spearman | verdict |
+|---|---|---|---|
+| constrained | **-0.114** (recall rises) | +0.041, p=0.73 | no cardinality effect |
+| unconstrained | **+0.214** | -0.293, p=0.011 | **meets both conditions** |
+
+Rejection required a drop of at least 0.15 *and* p < 0.05. The unconstrained arm
+satisfies both. The constrained arm satisfies neither, in the wrong direction.
+
+**Cardinality degrades extraction recall only when decoding is unconstrained.**
+
+This inverts the competing explanation. `RELATED_WORK.md` recorded constrained
+decoding as the strongest unfalsified alternative -- the concern being that the
+cost of staying inside a grammar grows with the number of array elements, making
+any apparent cardinality effect a property of the decoder. The opposite holds:
+the grammar is what holds recall flat, and removing it is what produces the
+decline.
+
+The emission counts show the mechanism. At `k=16` the constrained arm emits 9.4
+items and the unconstrained arm 7.2, against 16 available, at nearly identical
+precision (0.946 and 0.948). Free to choose when to stop, the model stops early
+and does so more as the list lengthens. The schema removes that choice: a
+partially-filled array is not a valid parse, so generation continues.
+
+At `k=1` the ordering reverses, +0.200 in favour of unconstrained at p = 0.096.
+That is the level this study's own power arithmetic said needs 106 documents
+rather than 25, because per-document recall at `k=1` is a coin flip. It is
+reported as underpowered and not read as a finding.
+
+### What this does not establish
+
+One model, dense, one family. The reasoning-mode factor does not exist on this
+stack -- `think` only relabels which field the same tokens arrive in, verified by
+identical `eval_count` -- so nothing here speaks to inference-time reasoning. The
+30B MoE arm was discarded because it was context-bound rather than measuring
+decoding, so the architecture comparison remains unrun. And the token ratio
+reported earlier as 18x was an artefact of that same context limit: on a model
+whose generation fits, unconstrained costs 1.1x at `k=1` and 0.7x at `k=16`.
