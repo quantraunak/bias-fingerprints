@@ -20,4 +20,4 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run tests
-        run: pytest -q project/tests
+        run: python -m pytest -q project/tests
