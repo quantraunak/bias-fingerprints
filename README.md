@@ -1,23 +1,130 @@
 # Bias Fingerprints
 
-**A method for auditing factor research from the outside**, and the point-in-time
-substrate it is calibrated on: prices and index membership that know what was true on
-each historical date, and SEC filings keyed to the day they were filed rather than the
-period they describe.
+**Joining fundamentals on fiscal period end rather than filing date inflates mean
+information coefficient by 59% and manufactures four spurious t-statistics above 2.0,
+while leaving eleven price-only factors unchanged to machine precision. Conditioning a
+universe on current index membership does the opposite: mean IC *falls* 0.0043 while
+illiquidity flips from t = −1.11 to +2.80. The two defects have different shapes, and one
+of those shapes is diagnosable in research you cannot re-run.**
 
-**Paper: [Bias Fingerprints](paper/bias_fingerprints.pdf)** (9pp, LaTeX source in
-[`paper/`](paper/)).
+**Paper:** [bias_fingerprints.pdf](paper/bias_fingerprints.pdf) · 9pp · LaTeX in [`paper/`](paper/)
+· [`leakprobe`](https://github.com/quantraunak/leakprobe) packages this repo's exact-zero
+control as a standalone tool.
 
-**The exact-zero control in Section 1 is now a tool:
-[`leakcheck`](https://github.com/quantraunak/leakcheck)** generalises it out of finance.
-Move when a data source became knowable, recompute, and any feature that moves has a
-dependency it never declared. It is what caught `turnover_1m` here.
+## Objective
+
+An allocator reading a manager's factor deck, a referee reading a submitted backtest, and
+a desk pricing a vendor signal all see the same thing: a table of t-statistics. None can
+run the pipeline that produced it. The literature on look-ahead and survivorship bias is
+written entirely for people who *can* — date your fundamentals correctly, build your
+universe point-in-time, shift a feature and check it degrades. Nothing in it helps a
+reader holding only the output.
+
+This repository asks whether a data-handling defect leaves a signature in the
+cross-section of reported factor performance specific enough to identify it from outside.
+
+## Hypothesis
+
+A defect `b` shifts a reported t-statistic vector by a fixed amount: `t = τ + δ_b + ε`,
+where `τ` is the study's true performance and `δ_b` is the defect's signature. If `δ_b` is
+measurable once on a pipeline you control, and if different defects have near-orthogonal
+signatures, then `b` is recoverable from `t` alone.
+
+## Result
+
+Two signatures, calibrated on a 22-factor US equity study, 2010–2026.
+
+| | Period-end join | Current-membership universe |
+|---|---|---|
+| mean IC | **+59%** | **−0.0043** |
+| factors crossing t = 2 spuriously | **4 of 11** | illiquidity t = −1.11 → **+2.80** |
+| price-only factors | unchanged, max drift `0.0e+00` | heavily distorted |
+| direction | uniform inflation | relocation, not inflation |
+
+The two signature vectors correlate at **−0.088**, bootstrap 95% CI [−0.126, −0.053]. They
+are near-independent directions in factor space, which is what makes a diagnostic possible
+at all.
+
+**Then the protocol was run, and it split the claim.** Gates 1 and 2 pass: subsample
+signatures correlate +0.93 to +0.995 with the full-sample vector, and the exclusion
+restriction holds at exactly zero in every subsample. Gate 3 does not:
+
+| diagnostic | accuracy under realistic τ | worst class |
+|---|---|---|
+| universe conditioning | **100.0%** | 100.0% |
+| period-end dating | 52.1% | **1.6%** |
+
+The dating diagnostic labels 97% of clean tables defective. The reason is geometric and
+measurable in advance: after removing family means, the dating signature is *smaller* than
+the within-family variation in true performance (6.42 against 10.02) and correlates +0.543
+with it, so a correct table already supplies 0.85× of the defect's shape. The universe
+signature has the opposite geometry — −0.268 correlation at more than twice the magnitude.
+
+## Framework proposed
+
+Not the two signatures, which are specific to this market and window, but the conditions
+that decide whether any signature is usable. Both are measurable at calibration time, on a
+pipeline you own, before touching a single reported table:
+
+1. **Magnitude and alignment.** `δ_b` must be large relative to the within-family variation
+   in `τ`, and not positively aligned with it. Collinearity between a defect's shape and
+   the true cross-section is not a noise problem and does not improve with a longer sample.
+2. **The excluded block must span factor families.** Dating cannot move a factor that never
+   reads a filed figure, which is the strongest identifying restriction available. It is
+   useless here because the family partition is nested inside the sensitivity partition:
+   value, quality and investment are entirely filing-sensitive, momentum, reversal and
+   volatility entirely price-only, and only liquidity spans both.
+
+Universe conditioning satisfies both. Period-end dating fails both. Any future defect —
+delisting-return assumptions, restatement handling, reconstitution timing — can be screened
+against these before being promoted from a measurement to a diagnostic.
+
+## Data
+
+| | |
+|---|---|
+| **Universe** | S&P 500 point-in-time membership, reconstructed as dated spells from public wiki revision history. Not CRSP; the universe signature inherits that approximation's errors. |
+| **Prices** | Daily OHLCV, fetched per user rather than redistributed |
+| **Fundamentals** | SEC XBRL company facts, keyed to filing date. Coverage begins 2010 because of the XBRL mandate phase-in, so the dating signature says nothing about the pre-XBRL era. |
+| **Window** | 2010–2026, out-of-sample from 2014-01-01 |
+| **Factors** | 22, of which 11 read a filed figure |
+| **Released** | Point-in-time fundamentals layer and membership spells under CC BY 4.0 |
+
+## Limitations
+
+One index, one country, one window. The two arms are not additively decomposable — the
+universe arm rebuilds forward returns per universe, because a study with that defect never
+observes the returns of the names it excluded. The diagnostic needs a wide enough table:
+five reported factors give a five-dimensional observation, and the exclusion restriction
+does not apply at all if none are price-only. Gate 4, calibrated application to real
+third-party tables, is unrun and now applies only to the universe signature. The gate 3
+simulation draws `τ` around this study's own factor table, which is the most realistic `τ`
+available and still one draw from one market.
+
+## Reproduce
+
+```bash
+make install
+make bias      # both signatures -> reports/pit_vs_naive.csv, reports/survivorship.csv
+make gates     # gates 1-3       -> reports/gates_1_to_3.txt
+make test
+cd paper && make
+```
+
+## Value
+
+For a reader holding only a factor table, this is the first method I know of that puts a
+number on which defect produced it — and, as importantly, says in advance when it cannot.
+For anyone building factor pipelines, the calibration numbers stand on their own: a
+period-end join is worth 59% of true IC and four false discoveries, and a
+survivorship-conditioned universe inverts the low-volatility anomaly rather than flattering
+it. Both are measured, not asserted.
 
 ---
 
-## 1. Bias fingerprinting
+# Detail
 
-**A method for auditing factor research from the outside.**
+## 1. Bias fingerprinting, in full
 
 A factor table is usually all an outside reader gets. An allocator reads a manager's IC
 table, a referee reads a submitted backtest, a desk prices a vendor signal. None of them
