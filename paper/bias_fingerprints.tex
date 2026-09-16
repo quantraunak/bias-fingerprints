@@ -51,8 +51,8 @@ manufactures four $t$-statistics above $2.0$, while leaving the eleven price-onl
 unchanged to machine precision. Conditioning the universe on current index membership
 does not inflate at all: mean IC \emph{falls} by $0.0043$ while \fac{amihud\_illiquidity}
 flips from $t = -1.11$ to $+2.80$ and the low-volatility anomaly inverts. The two
-signatures correlate at $-0.088$ and disagree in sign on value factors, which is what
-makes the diagnostic feasible.
+signatures correlate at $-0.088$ and disagree in sign on value factors, so they are
+separable directions in factor space.
 
 We then run the protocol. Both signatures are stable across disjoint subsamples and
 survive bootstrapping, but separability holds for only one of them. Against a
@@ -190,8 +190,8 @@ Novy-Marx and Velikov \cite{novymarx2016} price anomalies net of realistic tradi
 Both establish that construction choices dominate reported performance. Neither treats the
 construction choice as a quantity to be \emph{inferred} from a reported table.
 
-\paragraph{Where this sits.} The forward direction --- what a given defect does to a given
-study --- is a measurement in the tradition of the first group, made with the controlled
+\paragraph{Where this sits.} The forward direction, what a given defect does to a given
+study, is a measurement in the tradition of the first group, made with the controlled
 one-arm-at-a-time design the fourth group argues for. The inverse direction is what is new,
 and Section~\ref{sec:protocol} is explicit that it is proposed rather than established.
 
@@ -330,10 +330,10 @@ information nobody had.
 The generator produces three arms, holding everything else fixed:
 
 \begin{itemize}
-\item \textbf{PIT} --- visible the day the filing landed, and correct.
-\item \textbf{LAG45} --- every company files 45 days after quarter end, which is common
+\item \textbf{PIT}: visible the day the filing landed, and correct.
+\item \textbf{LAG45}: every company files 45 days after quarter end, which is common
 practice.
-\item \textbf{NAIVE} --- visible the instant the quarter closed, which is the defect.
+\item \textbf{NAIVE}: visible the instant the quarter closed, which is the defect.
 \end{itemize}
 
 \subsection{The controls hold exactly}
@@ -349,7 +349,7 @@ empirical basis for the exclusion restriction of Section~\ref{sec:framework}.
 One factor required care. \fac{turnover\_1m} is built from price and volume but divides
 by shares outstanding, so it inherits the filing calendar through its denominator. It is
 the only price-family factor that does. We determine dating sensitivity by measurement
-and check it against a declared set, so a factor that quietly acquires a filed input is
+and check it against a declared set, so a factor that acquires a filed input is
 surfaced rather than hidden among the controls.
 
 \subsection{What the defect is worth}
@@ -655,7 +655,7 @@ cross-section of what a study reports.
 
 Bias fingerprinting takes that observation and builds a method on it: measure the shape
 once on a pipeline you own, then test for it in tables you do not. The pieces the method
-needs are in place. A generator that isolates one convention at a time, two signatures
+needs are in place: a generator that isolates one convention at a time, two signatures
 that are near-orthogonal and carry an exact exclusion restriction, an inference model that
 absorbs unknown true performance through family contrasts, and a protocol whose hardest
 step has free labelled data because the labels are generated rather than collected.
@@ -671,9 +671,8 @@ What the framework gains from failing that gate is a condition rather than a cav
 A signature is diagnostically usable when it is large relative to within-family
 variation in true performance, not positively aligned with it, and its excluded
 block spans factor families. All three are measurable on a pipeline the analyst
-already owns, before any reported table is touched. The rest of the catalogue --
-delisting-return assumptions, restatement handling, index-reconstitution timing --
-can therefore be screened for usability at the point of calibration, and the ones
+already owns, before any reported table is touched. The rest of the catalogue (delisting-return
+assumptions, restatement handling, index-reconstitution timing) can therefore be screened for usability at the point of calibration, and the ones
 that fail can be reported as measurements of what a defect costs without being
 promoted to diagnostics.
 
