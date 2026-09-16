@@ -7,7 +7,7 @@ universe on current index membership does the opposite: mean IC *falls* 0.0043 w
 illiquidity flips from t = −1.11 to +2.80. The two defects have different shapes, and one
 of those shapes is diagnosable in research you cannot re-run.**
 
-**Paper:** [bias_fingerprints.pdf](paper/bias_fingerprints.pdf) · 9pp · LaTeX in [`paper/`](paper/)
+**Paper:** [bias_fingerprints.pdf](paper/bias_fingerprints.pdf) · 14pp · LaTeX in [`paper/`](paper/)
 · [`leakprobe`](https://github.com/quantraunak/leakprobe) packages this repo's exact-zero
 control as a standalone tool.
 
