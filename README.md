@@ -41,9 +41,9 @@ Two signatures, calibrated on a 22-factor US equity study, 2010–2026.
 | price-only factors | unchanged, max drift `0.0e+00` | heavily distorted |
 | direction | uniform inflation | relocation, not inflation |
 
-The two signature vectors correlate at **−0.088**, bootstrap 95% CI [−0.126, −0.053]. They
-are near-independent directions in factor space, which is what makes a diagnostic possible
-at all.
+The two signature vectors correlate at **−0.088**, block-bootstrap 95% CI [−0.225, +0.036].
+They are near-independent directions in factor space, which is what makes a diagnostic
+possible at all.
 
 **Then the protocol was run, and it split the claim.** Gates 1 and 2 pass: subsample
 signatures correlate +0.93 to +0.995 with the full-sample vector, and the exclusion
@@ -51,14 +51,21 @@ restriction holds at exactly zero in every subsample. Gate 3 does not:
 
 | diagnostic | accuracy under realistic τ | worst class |
 |---|---|---|
-| universe conditioning | **100.0%** | 100.0% |
-| period-end dating | 52.1% | **1.6%** |
+| universe conditioning | **99.2%** | 98.5% |
+| period-end dating | 63.9% | **29.5%** |
 
-The dating diagnostic labels 97% of clean tables defective. The reason is geometric and
+The dating diagnostic labels 70% of clean tables defective. The reason is geometric and
 measurable in advance: after removing family means, the dating signature is *smaller* than
-the within-family variation in true performance (6.42 against 10.02) and correlates +0.543
-with it, so a correct table already supplies 0.85× of the defect's shape. The universe
-signature has the opposite geometry — −0.268 correlation at more than twice the magnitude.
+the within-family variation in true performance (1.40 against 2.19, in overlap-deflated
+t-units) and correlates +0.543 with it, so a correct table already supplies 0.85× of the
+defect's shape. The universe signature has the opposite geometry — −0.268 correlation at
+more than twice the magnitude.
+
+All gate t-statistics are in the same units as the factor tables: daily ICs on a 21-day
+return are deflated to about 150 independent dates, and the bootstrap is a moving-block
+bootstrap with 21-day blocks. An earlier run used undeflated t and an iid bootstrap and
+reported shifts about 4.6× too large; the verdicts did not change, the magnitudes did.
+Full output: [`project/reports/gates_1_to_3.txt`](project/reports/gates_1_to_3.txt).
 
 ## Framework proposed
 
@@ -192,11 +199,12 @@ only the second leaves a signature worth testing for.
 ### Status
 
 Framework specified, generator built, two signatures calibrated and reproducible with
-`make bias`. Gates one through three have not been run, and the ordering is part of the
-method: a diagnostic that reports a label without a calibrated reference distribution is
-worse than no diagnostic. Gate three is the one that would normally be blocked on labelled
-data, and it is free here — biased panels come out of the generator, so the confusion
-matrix can be simulated with no annotation and no external dataset.
+`make bias`. Gates one through three are run (`make gates`): the universe signature passes
+all three, the dating signature fails gate three. Gate four, calibrated application to
+third-party tables, has not been run and applies only to the universe signature. Gate three
+is the one that would normally be blocked on labelled data, and it is free here — biased
+panels come out of the generator, so the confusion matrix can be simulated with no
+annotation and no external dataset.
 
 Measurements in [`docs/BIAS.md`](docs/BIAS.md), method in
 [`docs/FINGERPRINT.md`](docs/FINGERPRINT.md), paper in [`paper/`](paper/).

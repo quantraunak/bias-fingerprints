@@ -6,14 +6,15 @@ venv/
 .env
 .DS_Store
 
-# Downloaded and derived data. Everything here is reproducible with
-# `python -m scripts.build_data`, so none of it belongs in the repository.
+# Downloaded and derived data. Everything here is rebuilt by the scripts in
+# project/scripts (see README "Reproduce"), so none of it belongs in the repository.
 project/data/
 *.parquet
 
 # Run outputs. docs/index.html is generated from these and is committed;
-# the runs themselves are not.
-project/reports/
+# the runs themselves are not, except the gate output the paper cites.
+project/reports/*
+!project/reports/gates_1_to_3.txt
 logs/
 
 # advisor web app

@@ -1,14 +1,15 @@
 install:
 	pip install -r requirements.txt
 
-universe:
-	python project/scripts/build_universe.py --source sp500_wikipedia_snapshot
+# The point-in-time universe (membership spells) is downloaded and cached by
+# src/data/universe.py the first time a panel is built; there is no separate
+# build step. The old `universe` target pointed at a script that no longer exists.
 
 test:
 	python3 -m pytest -q project/tests
 
 run:
-	python project/run_backtest.py --config project/configs/default.yaml
+	cd project && python3 -m scripts.run_backtest --config configs/default.yaml
 
 # Reproduces docs/BIAS.md end to end.
 bias: bias-dating bias-survivorship
@@ -23,4 +24,4 @@ bias-survivorship:
 gates:
 	cd project && python3 scripts/gate_ic_series.py && python3 scripts/gates.py
 
-.PHONY: install universe test run bias bias-dating bias-survivorship gates
+.PHONY: install test run bias bias-dating bias-survivorship gates

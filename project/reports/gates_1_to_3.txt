@@ -1,0 +1,98 @@
+3142 dates, panels ['NAIVE', 'PIT', 'SURVIVOR']
+overlap deflation: 21-day horizon, factor 0.0476, 150 independent dates; t-statistics match src/eval/ic.py::summarize
+
+==============================================================================
+GATE 1  signature stability
+==============================================================================
+
+Correlation of each subsample signature with the full-sample signature:
+  NAIVE     first half +0.930   second half +0.928   odd months +0.988   even months +0.995
+  SURVIVOR  first half +0.967   second half +0.931   odd months +0.992   even months +0.990
+
+Stated criterion: amihud_illiquidity moves sharply positive under
+universe conditioning in every subsample.
+
+  subsample       amihud dt
+  first half          +3.55
+  second half         +2.05
+  odd months          +2.98
+  even months         +2.59
+
+  exclusion restriction holds in every subsample: max |shift| on price-only factors = 0.00e+00
+
+GATE 1: PASS
+
+==============================================================================
+GATE 2  signature uncertainty (2000 block bootstrap draws, block = 21 dates)
+==============================================================================
+
+NAIVE: signature with bootstrap standard errors (largest six by |t| of the shift)
+  cash_flow_yield          +1.02  +/-  0.14   z =  +7.06
+  roe                      +1.07  +/-  0.15   z =  +6.94
+  earnings_yield           +0.98  +/-  0.15   z =  +6.33
+  accruals                 +1.77  +/-  0.31   z =  +5.69
+  gross_profitability      +0.49  +/-  0.10   z =  +4.82
+  operating_margin         +0.35  +/-  0.12   z =  +2.88
+
+SURVIVOR: signature with bootstrap standard errors (largest six by |t| of the shift)
+  amihud_illiquidity       +3.91  +/-  0.44   z =  +8.98
+  turnover_1m              -2.05  +/-  0.25   z =  -8.24
+  vol_60d                  -1.41  +/-  0.19   z =  -7.45
+  idio_vol_60d             -2.02  +/-  0.27   z =  -7.41
+  max_ret_1m               -0.99  +/-  0.18   z =  -5.46
+  beta_252d                -0.65  +/-  0.12   z =  -5.25
+
+correlation between the two signatures: -0.088
+  bootstrap 95% interval: [-0.225, +0.036]
+  near-orthogonality is what makes the diagnostic feasible, so this interval
+  excluding +/-1 is the thing that matters, not the point value.
+
+GATE 2: PASS (error bars estimated)
+
+==============================================================================
+GATE 3  separability under realistic noise (4000 simulated studies each)
+==============================================================================
+
+Identification, in the space the test works in (family means removed):
+  ||tau||          2.19   within-family variation of true performance
+  ||d_dating||     1.40   corr with tau +0.543, projection +0.85x
+  ||d_universe||   5.17   corr with tau -0.268, projection -0.11x
+
+  A clean table already resembles a dating defect: the projection is the
+  fraction of the signature that true performance supplies for free, and a
+  nearest-signature rule picks the defect whenever it exceeds +0.50.
+
+--- tau exchangeable within families (the model's own assumption)
+  dating    accuracy  76.7%   worst class  75.8%   pass   [recall by class: none 75.8%  dating 77.6%]
+  universe  accuracy  99.7%   worst class  99.6%   pass   [recall by class: none 99.6%  universe 99.8%]
+  joint     accuracy  77.3%   worst class  75.2%   pass   [recall by class: none 75.2%  dating 77.0%  universe 78.6%  both 78.3%]
+            confusion (rows = truth, columns = call):
+                       none  dating  universe   both
+            none      75.2%   24.6%      0.2%   0.0%
+            dating    22.6%   77.0%      0.2%   0.2%
+            universe   0.1%    0.0%     78.6%  21.3%
+            both       0.2%    0.1%     21.4%  78.3%
+
+--- tau resembling a real factor table (the measured PIT vector)
+  dating    accuracy  63.9%   worst class  29.5%   FAIL   [recall by class: none 29.5%  dating 97.7%]
+  universe  accuracy  99.2%   worst class  98.5%   pass   [recall by class: none 99.9%  universe 98.5%]
+  joint     accuracy  64.3%   worst class  29.2%   FAIL   [recall by class: none 29.2%  dating 97.9%  universe 30.9%  both 96.0%]
+            confusion (rows = truth, columns = call):
+                       none  dating  universe   both
+            none      29.2%   70.7%      0.0%   0.1%
+            dating     2.0%   97.9%      0.0%   0.1%
+            universe   0.6%    0.5%     30.9%  68.0%
+            both       0.2%    1.6%      2.3%  96.0%
+
+Criterion: every class recovered above 50%. The average hides the failure
+that matters, which is calling a clean table defective.
+
+GATE 3, per defect:
+  dating    FAIL
+  universe  PASS
+  joint     FAIL
+
+GATE 3: PARTIAL -- the universe signature is usable, the dating signature is not.
+
+==============================================================================
+GATES 1-3: at least one fails

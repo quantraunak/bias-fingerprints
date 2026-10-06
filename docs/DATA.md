@@ -10,12 +10,8 @@
 
 No silent fallbacks. Missing files or invalid sources fail the run.
 
-Build snapshots:
-
-```bash
-python project/scripts/build_universe.py --source sp500_wikipedia_snapshot --path project/data/raw/universe_sp500.csv
-python project/scripts/universe_from_price_cache.py --out project/data/raw/universe.csv
-```
+The point-in-time spells file is downloaded by `src/data/universe.py` on first use and
+cached under `project/data/raw/universe/`. There is no separate build script.
 
 ## Prices (`data.price_source`)
 

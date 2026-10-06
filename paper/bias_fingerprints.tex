@@ -55,9 +55,9 @@ signatures correlate at $-0.088$ and disagree in sign on value factors, so they 
 separable directions in factor space.
 
 We then run the protocol. Both signatures are stable across disjoint subsamples and
-survive bootstrapping, but separability holds for only one of them. Against a
-$\tau$ resembling a real factor table, universe conditioning is recovered at 100\%
-accuracy while period-end dating is recovered at 52\% and labels 97\% of clean
+survive a block bootstrap, but separability holds for only one of them. Against a
+$\tau$ resembling a real factor table, universe conditioning is recovered at 99\%
+accuracy while period-end dating is recovered at 64\% and labels 70\% of clean
 tables defective. The reason is geometric and measurable in advance: after removing
 family means the dating signature is smaller than the within-family variation of
 true performance and correlates $+0.543$ with it, so a clean table already supplies
@@ -134,10 +134,11 @@ convention at a time. And the characterisation of the universe channel as a
 forward-looking growth filter rather than a survival filter, which explains why it
 relocates measured performance instead of inflating it.
 
-The framework is specified and calibrated; it is not yet validated as a test. Gates one
-through three of Section~\ref{sec:protocol} have not been run, and we treat that ordering
-as part of the method rather than as an omission: a diagnostic that reports a label
-without a calibrated reference distribution is worse than no diagnostic.
+The framework is specified and calibrated, and gates one through three of
+Section~\ref{sec:protocol} are run in Section~\ref{sec:gates}. Gate four, calibrated
+application to reported tables, is not, and the ordering is part of the method: a
+diagnostic that reports a label without a calibrated reference distribution is worse than
+no diagnostic.
 Section~\ref{sec:framework} sets out the framework, Section~\ref{sec:data} the generator
 it is instantiated on, Sections~\ref{sec:dating} and~\ref{sec:surv} the two signatures,
 Section~\ref{sec:fingerprints} their separability, and Section~\ref{sec:protocol} the
@@ -154,7 +155,9 @@ tests. Survivorship bias in performance evaluation was quantified by Brown, Goet
 Ibbotson and Ross \cite{brown1992} and by Elton, Gruber and Blake \cite{elton1996}, and
 Shumway \cite{shumway1997} and Shumway and Warther \cite{shumway1999} showed that even CRSP
 needs care, because missing delisting returns bias the small-cap end of the cross-section.
-None of that work is superseded here. What it does not do is characterise the \emph{shape}
+Kothari, Shanken and Sloan \cite{kothari1995} showed that Compustat backfill and
+survivorship alone can manufacture a book-to-market premium, which is the same
+mechanism this paper's universe arm isolates. None of that work is superseded here. What it does not do is characterise the \emph{shape}
 of each distortion across a factor cross-section, which is the object this paper measures.
 
 \paragraph{Work on false discovery in the factor zoo concerns multiplicity, not
@@ -164,7 +167,11 @@ $t$-statistic threshold near $3.0$. Bailey and L\'opez de Prado \cite{bailey2014
 deflate the Sharpe ratio for selection and non-normality, and Bailey et al.
 \cite{bailey2014pseudo} show how fast backtest overfitting manufactures apparent skill.
 McLean and Pontiff \cite{mclean2016} document post-publication decay consistent with a
-substantial share of published anomalies being artifacts.
+substantial share of published anomalies being artifacts. Hou, Xue and Zhang
+\cite{hou2020} replicate 452 anomalies under a common construction and find most do not
+survive it, and Harvey and Liu \cite{harvey2021lucky} give a bootstrap procedure for
+judging a factor against the luck of the search that found it. Both treat construction as
+something to standardise; this paper treats it as something to infer.
 
 That literature asks whether a result survives the number of hypotheses tested. It is silent
 on whether a result is an artifact of how the panel was \emph{built}, and the two leave
@@ -303,7 +310,14 @@ approximation to a point-in-time constituent file and is not CRSP;
 Section~\ref{sec:limits} treats the consequences.
 
 \paragraph{Prices.} Daily adjusted closes, 2010--2026, with a tradability screen on
-price, volume and index membership.
+price, volume and index membership. Prices come from a free public source that does not
+carry delisted tickers, so 278 of the 990 historical members have no price history and
+are dropped. The point-in-time baseline is therefore itself survivorship-filtered: the
+universe arm measures the effect of conditioning on current membership \emph{relative to}
+a universe that already lacks most of the names that left by failing, and the
+``727 names, including companies that went bust'' description of the universe holds only
+for names that left by acquisition or demotion. Delisting returns are absent for the same
+reason. Section~\ref{sec:limits} records the consequence.
 
 \paragraph{Fundamentals.} SEC XBRL company facts, keyed on the date each figure was
 filed. Restatements resolve to the earliest filing. Cumulative cash-flow spans are
@@ -511,7 +525,12 @@ measured before either reading may be given a confidence.
 Section~\ref{sec:protocol} commits to four gates. Gates one to three are run here.
 Each is computed from a cached per-date IC series for the three panels, which makes
 subperiod splits slices of that series and the bootstrap arithmetic rather than a
-sequence of panel rebuilds.
+sequence of panel rebuilds. Every $t$-statistic in this section is in the units of the
+factor tables above: the IC series is daily and the forward return is 21 days, so the
+3,142 dates are deflated to about 150 independent observations before any $t$ is
+formed. An earlier run of these gates used an undeflated $t$ and reported shifts about
+$\sqrt{21} \approx 4.6$ times larger than Figure~\ref{fig:fingerprints}; the verdicts
+below are unchanged by the correction, the magnitudes are not.
 
 \subsection{Gate 1: the signatures are stable}
 
@@ -519,8 +538,8 @@ Both signatures were re-measured on four disjoint subsamples: the first and seco
 halves of the window, and odd- and even-numbered months. Every subsample signature
 correlates with the full-sample vector between $+0.928$ and $+0.995$. The stated
 criterion was that \fac{amihud\_illiquidity} must move sharply positive under
-universe conditioning in every subsample; it moves $+16.27$, $+9.40$, $+13.65$ and
-$+11.86$ $t$-units respectively.
+universe conditioning in every subsample; it moves $+3.55$, $+2.05$, $+2.98$ and
+$+2.59$ $t$-units respectively.
 
 The exclusion restriction was re-checked per subsample rather than only in
 aggregate. The maximum absolute shift on the eleven price-only factors under the
@@ -529,26 +548,33 @@ property of the construction and not of the full-sample average. Gate 1 passes.
 
 \subsection{Gate 2: the signatures carry error bars}
 
-Two thousand bootstrap draws over dates give a sampling covariance for each
-signature. The largest shifts are estimated precisely: under the dating defect
-\fac{accruals} shifts $+8.10 \pm 0.41$ and \fac{roe} $+4.92 \pm 0.21$; under
-universe conditioning \fac{amihud\_illiquidity} shifts $+17.92 \pm 0.56$ and
-\fac{turnover\_1m} $-9.39 \pm 0.33$. The $-0.088$ correlation between the two
-signatures has a bootstrap 95\% interval of $[-0.126, -0.053]$, so near-orthogonality
-survives estimation rather than being an artefact of a point estimate. Gate 2 passes.
+Two thousand moving-block bootstrap draws over dates, with blocks of one 21-day
+horizon so that the serial dependence of overlapping returns is kept, give a sampling
+covariance for each signature. The largest shifts are estimated precisely: under the
+dating defect \fac{accruals} shifts $+1.77 \pm 0.31$ and \fac{roe} $+1.07 \pm 0.15$;
+under universe conditioning \fac{amihud\_illiquidity} shifts $+3.91 \pm 0.44$ and
+\fac{turnover\_1m} $-2.05 \pm 0.25$. The point estimates agree with
+Figure~\ref{fig:fingerprints} by construction. The $-0.088$ correlation between the two
+signatures has a bootstrap 95\% interval of $[-0.225, +0.036]$: the interval covers
+zero and excludes $\pm 1$ by a wide margin, which is the property the diagnostic needs.
+Gate 2 passes.
 
 \subsection{Gate 3: one signature is identified and one is not}
 
 Gate three simulates studies, applies a defect, adds sampling noise at the level
-this twelve-year window actually carries, and classifies by projection onto each
-candidate signature after removing family means. Labels are free because the
-generator produces them, so the confusion matrix is estimated over four thousand
-simulated studies per condition.
+this twelve-year window actually carries, and classifies by nearest signature after
+removing family means. Labels are free because the generator produces them, so the
+confusion matrix is estimated over four thousand simulated studies per condition. The
+classifier does not model $\tau$: whatever within-family structure true performance has
+is treated as noise around the template. A classifier that estimated $\tau$ jointly with
+the label could do better, so the failures below are statements about this estimator
+under this $\tau$, not lower bounds on what any estimator could recover.
 
-The result depends entirely on one assumption, which is the point of running it.
-Under $\tau$ exchangeable within families -- the assumption the inference model of
-Section~\ref{sec:framework} is built on -- classification is near-perfect at
-99.8\% accuracy. Under a $\tau$ resembling the measured factor table, it splits:
+The result depends on one assumption, which is the point of running it. Under $\tau$
+exchangeable within families up to idiosyncratic noise of $0.5$ $t$-units -- the
+assumption the inference model of Section~\ref{sec:framework} is built on -- the universe
+diagnostic is recovered at 99.7\% and the dating diagnostic at 76.7\%, both above the
+criterion. Under a $\tau$ resembling the measured factor table, it splits:
 
 \begin{table}[h]
 \centering
@@ -557,23 +583,28 @@ Section~\ref{sec:framework} is built on -- classification is near-perfect at
 \toprule
 Diagnostic & Accuracy & Worst class \\
 \midrule
-None vs.\ universe conditioning & 100.0\% & 100.0\% \\
-None vs.\ period-end dating & 52.1\% & 1.6\% \\
-Joint, four conditions & 50.8\% & 1.4\% \\
+None vs.\ universe conditioning & 99.2\% & 98.5\% \\
+None vs.\ period-end dating & 63.9\% & 29.5\% \\
+Joint, four conditions & 64.3\% & 29.2\% \\
 \bottomrule
 \end{tabular}
-\caption{Gate 3 under a realistic $\tau$. The worst-class column is the criterion,
-because an average hides the failure that matters: calling a clean table defective.}
+\caption{Gate 3 under a realistic $\tau$, 4,000 simulated studies per row. Accuracy is
+over equiprobable classes; the worst-class column is the criterion, because an average
+hides the failure that matters: calling a clean table defective.}
 \label{tab:gate3}
 \end{table}
 
-The universe diagnostic recovers both classes perfectly. The dating diagnostic
-labels 97\% of clean tables as defective and is unusable.
+The universe diagnostic recovers both classes. The dating diagnostic labels 70\% of
+clean tables as defective (clean recall 29.5\%, dating recall 97.7\%) and is unusable.
+In the four-condition problem the dating failure propagates: a universe-conditioned table
+is called ``both'' 68\% of the time, because the classifier cannot tell whether a dating
+defect is also present, so the joint diagnostic can say ``universe problem'' but not
+``universe problem only''.
 
 The cause is measurable rather than inferred. Write $\tilde{x}$ for a vector with
-family means removed. Then $\lVert\tilde{\tau}\rVert = 10.02$,
-$\lVert\tilde{\delta}_\text{dating}\rVert = 6.42$ and
-$\lVert\tilde{\delta}_\text{universe}\rVert = 23.69$. The dating signature is
+family means removed. Then $\lVert\tilde{\tau}\rVert = 2.19$,
+$\lVert\tilde{\delta}_\text{dating}\rVert = 1.40$ and
+$\lVert\tilde{\delta}_\text{universe}\rVert = 5.17$. The dating signature is
 \emph{smaller} than the within-family variation of true performance it must be
 separated from, and worse, it points the same way:
 $\operatorname{corr}(\tilde{\tau}, \tilde{\delta}_\text{dating}) = +0.543$, and the
@@ -641,6 +672,14 @@ table. That is the most realistic $\tau$ available, and it is one draw from one
 market and one window. A different factor cross-section could have a different
 alignment with the dating signature, which is an argument for measuring the
 alignment per application rather than assuming this one transfers.
+\item The gate 3 classifier is nearest-template with no model of $\tau$. Part of what
+reads as ``dating is undiagnosable'' is a property of that estimator, and a likelihood
+that treats $\tau$ as a nuisance parameter is the natural next step.
+\item The price source drops delisted tickers, so the correct baseline is itself
+survivorship-filtered and the universe signature is measured against a universe that has
+already lost most names that failed. On CRSP with delisting returns the universe
+signature would plausibly be larger, not smaller, and the dating signature should be
+unchanged because it does not touch the universe.
 \end{itemize}
 
 \section{Conclusion}
@@ -680,7 +719,7 @@ promoted to diagnostics.
 \texttt{scripts/pit\_vs\_naive.py}; the universe arm is
 \texttt{scripts/survivorship.py}. Gates one to three are
 \texttt{scripts/gate\_ic\_series.py} followed by \texttt{scripts/gates.py}, with the
-full output in \texttt{reports/gates\_1\_to\_3.txt}. Per-factor outputs are written to
+full output in \texttt{project/reports/gates\_1\_to\_3.txt}, which is committed. Per-factor outputs are written to
 \texttt{reports/pit\_vs\_naive.csv} and \texttt{reports/survivorship.csv}. Prices are
 fetched per user rather than redistributed. The point-in-time fundamentals layer and the
 membership spells are released under CC~BY~4.0.
@@ -749,6 +788,21 @@ S.~Kapoor and A.~Narayanan.
 S.~Kaufman, S.~Rosset, and C.~Perlich.
 \newblock Leakage in data mining: formulation, detection, and avoidance.
 \newblock \emph{ACM Transactions on Knowledge Discovery from Data}, 6(4):1--21, 2012.
+
+\bibitem{kothari1995}
+S.~P. Kothari, J.~Shanken, and R.~G. Sloan.
+\newblock Another look at the cross-section of expected stock returns.
+\newblock \emph{Journal of Finance}, 50(1):185--224, 1995.
+
+\bibitem{hou2020}
+K.~Hou, C.~Xue, and L.~Zhang.
+\newblock Replicating anomalies.
+\newblock \emph{Review of Financial Studies}, 33(5):2019--2133, 2020.
+
+\bibitem{harvey2021lucky}
+C.~R. Harvey and Y.~Liu.
+\newblock Lucky factors.
+\newblock \emph{Journal of Financial Economics}, 141(2):413--435, 2021.
 
 \bibitem{lo1990}
 A.~W. Lo and A.~C. MacKinlay.

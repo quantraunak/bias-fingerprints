@@ -42,8 +42,7 @@ def summarize(ic: pd.Series, horizon_days: int) -> dict:
     """
     if ic.empty:
         return {"n": 0}
-    spacing = _median_spacing_days(ic.index)
-    independent = max(len(ic) * min(spacing / horizon_days, 1.0), 1.0)
+    independent = independent_count(ic.index, horizon_days)
     mean, std = float(ic.mean()), float(ic.std())
     ir = mean / std if std > 0 else 0.0
     return {
@@ -57,6 +56,23 @@ def summarize(ic: pd.Series, horizon_days: int) -> dict:
         "pct_positive": round(float((ic > 0).mean()), 4),
         "ic_autocorr_1": round(float(ic.autocorr(1)), 4) if len(ic) > 2 else np.nan,
     }
+
+
+def deflation_factor(index: pd.DatetimeIndex, horizon_days: int) -> float:
+    """Fraction of dates that count as independent draws for an h-day horizon.
+
+    Daily scoring of a 21-day return gives 1/21; monthly scoring gives 1. This is
+    the single convention every t-statistic in the project uses, so a shift
+    measured by `scripts/gates.py` is in the same units as a shift read off the
+    factor tables that `summarize` produces.
+    """
+    spacing = _median_spacing_days(index)
+    return min(spacing / horizon_days, 1.0)
+
+
+def independent_count(index: pd.DatetimeIndex, horizon_days: int) -> float:
+    """Effective number of independent observations in an IC series."""
+    return max(len(index) * deflation_factor(index, horizon_days), 1.0)
 
 
 def _median_spacing_days(index: pd.DatetimeIndex) -> float:

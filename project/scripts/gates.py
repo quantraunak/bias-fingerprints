@@ -3,8 +3,17 @@
     python3 scripts/gates.py
 
 Gate 1  signature stability   -- disjoint subperiods and random half-universes
-Gate 2  signature uncertainty -- bootstrap over dates for a sampling covariance
+Gate 2  signature uncertainty -- block bootstrap over dates for a sampling covariance
 Gate 3  separability          -- confusion matrix at a twelve-year study's noise
+
+Units. Every t-statistic here is deflated for overlap exactly as
+src/eval/ic.py::summarize deflates it: the IC series is daily and the forward
+return is 21 days, so 3,142 dates count as about 150 independent draws. Earlier
+versions of this script used a naive mean/(sd/sqrt(n)) and reported shifts
+about sqrt(21) = 4.6x too large relative to the factor tables; the gate verdicts
+were unaffected but the magnitudes were not comparable. Resampling is a moving
+block bootstrap with block length equal to the horizon, so each draw keeps the
+serial dependence that overlapping returns create.
 
 Each gate is pass/fail on a criterion fixed in the paper before any of this ran.
 Gate 1's stated criterion is `amihud_illiquidity` moving sharply positive under
@@ -25,10 +34,17 @@ import numpy as np
 import pandas as pd
 
 from src.config import PROCESSED
+from src.eval import ic as ic_module
 
 SERIES = PROCESSED / "gate_ic_series.parquet"
 HORIZON = 21
+BLOCK = HORIZON
 RNG = np.random.default_rng(20260911)
+
+# Set once from the series in main(): the share of dates that are independent
+# draws at this horizon. Held fixed across subsamples and bootstrap draws so a
+# resampled index with repeated dates does not change the units.
+DEFLATION = {"factor": 1.0}
 
 FAMILY = {
     "book_to_market": "value", "earnings_yield": "value",
@@ -54,9 +70,28 @@ SENSITIVE = {
 
 
 def t_stats(ic: pd.DataFrame) -> pd.Series:
-    """Newey-West-free t on mean IC, matching ic_module.summarize's convention."""
-    n = ic.notna().sum()
-    return ic.mean() / (ic.std(ddof=1) / np.sqrt(n))
+    """t on mean IC in the same units as ic_module.summarize.
+
+    The effective sample size is the date count times the overlap deflation
+    factor (spacing / horizon, capped at one), computed once on the full series.
+    """
+    n_eff = (ic.notna().sum() * DEFLATION["factor"]).clip(lower=1.0)
+    return ic.mean() / (ic.std(ddof=1) / np.sqrt(n_eff))
+
+
+def block_resample(index: pd.DatetimeIndex, rng, block: int = BLOCK) -> pd.DatetimeIndex:
+    """Moving block bootstrap: contiguous runs of `block` dates, drawn with replacement.
+
+    An iid resample of overlapping-return ICs destroys the serial dependence the
+    overlap creates and makes the error bars too tight. Blocks of one horizon keep
+    it, at the cost of a little bias at block edges.
+    """
+    n = len(index)
+    if n <= block:
+        return index[rng.integers(0, n, n)]
+    starts = rng.integers(0, n - block + 1, int(np.ceil(n / block)))
+    positions = np.concatenate([np.arange(s, s + block) for s in starts])[:n]
+    return index[positions]
 
 
 def signature(series: pd.DataFrame, panel: str, on: pd.Index | None = None) -> pd.Series:
@@ -128,13 +163,12 @@ def gate_one(series: pd.DataFrame) -> bool:
 def gate_two(series: pd.DataFrame, draws: int = 2000) -> dict:
     """Uncertainty. A point estimate cannot support a test, so bootstrap the dates."""
     print("\n" + "=" * 78)
-    print(f"GATE 2  signature uncertainty ({draws} date bootstrap draws)")
+    print(f"GATE 2  signature uncertainty ({draws} block bootstrap draws, block = {BLOCK} dates)")
     print("=" * 78)
     panels = [p for p in ("NAIVE", "SURVIVOR") if p in series.columns.get_level_values(0)]
-    n = len(series)
     samples = {p: [] for p in panels}
     for _ in range(draws):
-        idx = series.index[RNG.integers(0, n, n)]
+        idx = block_resample(series.index, RNG)
         for panel in panels:
             samples[panel].append(signature(series, panel, idx).to_numpy())
 
@@ -174,6 +208,13 @@ def simulate(series, boot, tau_mode: str, trials: int, rng, labels=None) -> pd.D
     performance behaves that way is an empirical matter, and it is what decides
     whether the diagnostic works on tables rather than on simulations built to
     agree with it.
+
+    The classifier is nearest-template on family-demeaned observations. It does
+    not model tau: whatever within-family structure true performance has is
+    treated as noise around the template. A classifier that estimated tau jointly
+    with the defect label could do better, so "dating is not separable" below is
+    a statement about this estimator under this tau, not a lower bound on what
+    any estimator could recover.
     """
     factors = list(series["PIT"].columns)
     delta = {"none": pd.Series(0.0, index=factors)}
@@ -189,8 +230,7 @@ def simulate(series, boot, tau_mode: str, trials: int, rng, labels=None) -> pd.D
     family_mean = pit_t.groupby(families).transform("mean")
     within_sd = float(demean_by_family(pit_t).std(ddof=1))
 
-    n = len(series)
-    boot_t = [t_stats(series["PIT"].loc[series.index[rng.integers(0, n, n)]]).to_numpy()
+    boot_t = [t_stats(series["PIT"].loc[block_resample(series.index, rng)]).to_numpy()
               for _ in range(500)]
     noise_sd = pd.Series(np.vstack(boot_t).std(axis=0, ddof=1), index=factors)
 
@@ -198,8 +238,11 @@ def simulate(series, boot, tau_mode: str, trials: int, rng, labels=None) -> pd.D
     for _ in range(trials):
         truth = labels[rng.integers(0, len(labels))]
         if tau_mode == "exchangeable":
-            # tau constant within family plus small idiosyncratic noise: the
-            # assumption the inference model is built on, stated as a simulation.
+            # tau constant within family plus idiosyncratic noise of sd 0.5 in
+            # (overlap-deflated) t-units: the assumption the inference model is
+            # built on, stated as a simulation. The 0.5 is a fixed design choice;
+            # in these units it is about a quarter of ||tau~||, so this case is
+            # "mostly exchangeable", not "exactly exchangeable".
             tau = family_mean + pd.Series(rng.normal(0, 0.5, len(factors)), index=factors)
         else:
             # tau resembling a real factor table: the measured PIT t-vector,
@@ -253,8 +296,14 @@ def gate_three(series: pd.DataFrame, boot: dict, trials: int = 4000) -> bool:
             ok = worst >= 0.5
             if mode == "realistic":
                 verdicts[label] = ok
+            per_class = "  ".join(f"{k} {v:.1%}" for k, v in np.diag(normed).tolist() and
+                                  zip(normed.index, np.diag(normed)))
             print(f"  {label:<9} accuracy {accuracy:>6.1%}   worst class {worst:>6.1%}   "
-                  f"{'pass' if ok else 'FAIL'}")
+                  f"{'pass' if ok else 'FAIL'}   [recall by class: {per_class}]")
+            if label == "joint":
+                print("            confusion (rows = truth, columns = call):")
+                for row in normed.to_string(float_format=lambda v: f"{v:6.1%}").splitlines():
+                    print(f"            {row}")
 
     print("\nCriterion: every class recovered above 50%. The average hides the failure")
     print("that matters, which is calling a clean table defective.")
@@ -270,7 +319,11 @@ def main() -> None:
         sys.exit(f"missing {SERIES}; run scripts/gate_ic_series.py first")
     series = pd.read_parquet(SERIES)
     series.index = pd.DatetimeIndex(series.index)
-    print(f"{len(series)} dates, panels {sorted(set(series.columns.get_level_values(0)))}\n")
+    DEFLATION["factor"] = ic_module.deflation_factor(series.index, HORIZON)
+    print(f"{len(series)} dates, panels {sorted(set(series.columns.get_level_values(0)))}")
+    print(f"overlap deflation: {HORIZON}-day horizon, factor {DEFLATION['factor']:.4f}, "
+          f"{len(series) * DEFLATION['factor']:.0f} independent dates; "
+          f"t-statistics match src/eval/ic.py::summarize\n")
     one = gate_one(series)
     boot = gate_two(series)
     three = gate_three(series, boot)
