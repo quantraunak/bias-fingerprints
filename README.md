@@ -1,5 +1,10 @@
 # Bias Fingerprints
 
+> **Claim.** A data-handling defect shifts a factor study's reported t-statistics by a fixed vector, and for one of the two defects measured here (a universe conditioned on current index membership) that vector is identifiable from a results table alone; for the other (period-end dating of fundamentals) it is not, for a geometric reason measurable in advance.
+> **Evidence.** `project/reports/pit_vs_naive.csv` and `project/reports/survivorship.csv` (`make bias`) for the two signatures; `project/reports/gates_1_to_3.txt` (`make gates`, 2026-10-05) for the protocol. Every number below traces to a line in [`docs/CLAIMS.md`](docs/CLAIMS.md).
+> **Pre-registered.** The four-gate protocol and its order (`docs/FINGERPRINT.md`). Not pre-registered: the two defects chosen, the 0.80 threshold language, and the Gate 3 pass criterion (every class above 50%), which is stated in `scripts/gates.py` rather than in the protocol document. This is a measurement study, not a pre-registered test.
+> **Status.** Gates 1–3 run; Gate 4 (application to third-party tables) unrun. Universe and prices are free approximations (wiki spells, yfinance without delistings). Several supporting numbers in the narrative sections come from script console output that was not committed and are marked as such below.
+
 **Joining fundamentals on fiscal period end rather than filing date inflates mean
 information coefficient by 59% and manufactures four spurious t-statistics above 2.0,
 while leaving eleven price-only factors unchanged to machine precision. Conditioning a
@@ -7,7 +12,7 @@ universe on current index membership does the opposite: mean IC *falls* 0.0043 w
 illiquidity flips from t = −1.11 to +2.80. The two defects have different shapes, and one
 of those shapes is diagnosable in research you cannot re-run.**
 
-**Paper:** [bias_fingerprints.pdf](paper/bias_fingerprints.pdf) · 14pp · LaTeX in [`paper/`](paper/)
+**Paper:** [bias_fingerprints.pdf](paper/bias_fingerprints.pdf) · 15pp · LaTeX in [`paper/`](paper/)
 · [`leakprobe`](https://github.com/quantraunak/leakprobe) packages this repo's exact-zero
 control as a standalone tool.
 
@@ -244,9 +249,9 @@ bias-fingerprinting framework is calibrated on, and it is complete in its own ri
 |---|---|
 | Mean IC | **0.0165** (t = 2.00 over 150 out-of-sample months) |
 | IC information ratio | 0.164 monthly · 0.567 annualised |
-| Decile spread | **68.1bp / month** (t = 3.08) |
-| Universe | 727 names, point-in-time membership, prices from 2004 |
-| Fundamentals | SEC EDGAR XBRL, 648 issuers, keyed on filing date, usable from 2010 |
+| Decile spread | **68.1bp / month** (t = 3.08), signal-level, from `signal.json`; the pooled per-name decile table in `quantile_returns.csv` gives 73.3bp top-minus-bottom. The 43.7bp figure in the beta decomposition below is a third, unverified series |
+| Universe | 990 names held a membership spell from 2004 on; 725 of them have a price history in the cache (prices from 2004) |
+| Fundamentals | SEC EDGAR XBRL, up to 645 issuers with facts on a given date (`universe_coverage.csv`), keyed on filing date, usable from 2010 |
 
 Two results from auditing it generalise past this study, and both are reported below:
 [59% of an apparently significant decile spread is market beta](#beta-decomposition), and
@@ -256,7 +261,7 @@ distribution five times as wide as the point estimate suggests](#robustness).
 **Shared infrastructure.** Point-in-time index membership from reconstructed spells, SEC
 XBRL keyed on filing date, an entity resolver from filing text to tickers, and a
 hand-annotated benchmark for relationship extraction with
-[auditable negatives](docs/gold_exclusions.md).
+auditable negatives (now in [`filing-links`](https://github.com/quantraunak/filing-links)).
 
 Fundamental coverage begins in 2010, not 2004. The SEC's XBRL mandate phased in over
 2009–2011, so `companyfacts` returns nothing for earlier periods, and the first filings
@@ -300,7 +305,9 @@ Three details in the XBRL feed each cost real coverage if handled naively:
   filing is kept, because that is the number the market actually saw.
 - **Year-to-date reporting.** Cash-flow statements are filed cumulatively (3-, 6-, 9-,
   12-month spans) and the 10-K reports the full year rather than Q4. Taking "quarterly"
-  facts at face value dropped 56 of 72 quarters of operating cash flow for Apple. Both
+  facts at face value dropped most of Apple's quarterly operating cash flow (the count
+  quoted in an earlier draft, 56 of 72 quarters, came from an uncommitted check and is
+  not reproduced here). Both
   cases are the same problem — a long period sharing its start date with a shorter one —
   and both are solved by differencing to a fixed point.
 - **Tag migration.** `SalesRevenueNet` gave way to
@@ -325,12 +332,12 @@ Twenty-two factors, each signed so that higher means predicted-higher return, in
 direction the published anomaly runs. A negative IC therefore means the anomaly failed
 over this sample rather than that a sign was flipped somewhere in the code.
 
-**Price and volume.** Momentum at true trading-day horizons, residual momentum
-(Blitz–Huij–Martens), short-term reversal, low volatility, idiosyncratic volatility
-(Ang et al.), betting-against-beta, MAX (Bali–Cakici–Whitelaw), Amihud illiquidity,
-turnover, and a liquidity *shock* rather than a level.
+**Price and volume (12).** Momentum at two true trading-day horizons, residual momentum
+(Blitz–Huij–Martens), short-term reversal, a 200-day trend, low volatility, idiosyncratic
+volatility (Ang et al.), betting-against-beta, MAX (Bali–Cakici–Whitelaw), Amihud
+illiquidity, turnover, and a liquidity *shock* rather than a level.
 
-**Fundamental.** Book-to-market, earnings yield, cash-flow yield, sales yield, gross
+**Fundamental (10).** Book-to-market, earnings yield, cash-flow yield, sales yield, gross
 profitability (Novy-Marx), ROE, operating margin, asset growth
 (Cooper–Gulen–Schill), accruals (Sloan), net share issuance (Pontiff–Woodgate).
 
@@ -446,7 +453,11 @@ the reference study produced.
 | Beta-adjusted alpha | 17.7bp / month → 2.12% / yr, t = **0.92** |
 
 The long decile runs a beta of 1.10 against the short decile's 0.99 — a tilt that is
-positive in 73% of months, over a window in which the market compounded at 13.7%.
+positive in most months, over a window in which the market compounded at 13.7%.
+*The beta decomposition in this section (43.7bp, t = 2.11, beta 0.218, 17.7bp alpha at
+t = 0.92, 59% of the edge) is reproduced from constants in `scripts/build_dashboard.py`;
+the regression output that produced them was not committed, so these figures are
+unverified until it is re-run and saved.*
 **59% of the apparent edge is market exposure rather than stock selection.** The factors
 doing the work are value and quality, and value is cyclical; the book was being paid for
 exposure it did not intend to take. A decile-spread t-statistic reported without its
@@ -454,7 +465,8 @@ beta decomposition is not a claim about stock selection, and that holds for any 
 this shape rather than only this one.
 
 Residualising every factor against beta and size at the signal level was tried and made
-things worse: IC falls from 0.0165 to 0.0062, because at this horizon the value edge
+things worse: IC falls from 0.0164 to 0.0062 (recorded in the `risk_neutral` docstring
+in `factors/registry.py`; output not committed), because at this horizon the value edge
 substantially *is* a size effect, and orthogonalising the exposure away removes the alpha
 with it. The code is kept behind a `risk_neutral` flag, off by default, with the
 measurement recorded rather than the attempt deleted.
@@ -464,7 +476,8 @@ measurement recorded rather than the attempt deleted.
 ## Robustness
 
 Re-ordering the factor list — no economic change, only LightGBM's column sampling and
-tie-breaking — moved the backtest Sharpe from 0.07 to 0.29. Rather than pick one,
+tie-breaking — moved the backtest Sharpe materially (the exact pair quoted in an earlier
+draft was not from a committed run). Rather than pick one,
 `scripts/robustness.py` re-fits the entire walk-forward under six model seeds with
 identical economics:
 
@@ -499,7 +512,8 @@ where an edge in it is likely to be found. The study is built and reported as a
 measurement of how much of a published anomaly stack survives correct construction, which
 is also exactly what a bias-fingerprinting generator needs to be.
 
-**Residual survivorship limitation.** 278 of 990 historical members could not be priced —
+**Residual survivorship limitation.** 265 of the 990 historical members have no price
+history in the current cache —
 Yahoo drops delisted tickers, and those are precisely the survivorship-relevant names.
 Survivorship bias is *reduced, not eliminated*, and the remainder flatters these
 results. It also bounds the second signature: `docs/BIAS.md` reports what that does to the
@@ -516,12 +530,10 @@ paper/
 docs/
   FINGERPRINT.md            the framework: generator, signature, inference, protocol
   BIAS.md                   the two calibrated signatures, in full
-  HYPOTHESIS.md             link-protocol pre-registration, written before the data
-  SPECIFICATIONS.md         every choice tried, including the ones that failed
-  EXTRACTION.md             cost/quality frontier for local relation extraction
-  RESULT_01.md              a pre-registered hypothesis, rejected
-  RELATED_WORK.md           literature checked before building, not after
-  DATASHEET.md / RELEASE.md what ships, in what form, under what licence
+  CLAIMS.md                 every number, where it appears, what artifact it comes from
+  DATA.md                   data contract: sources, caches, purge
+  PORTFOLIO_FINDINGS.md     portfolio construction variants (different cost model, see note there)
+  (extraction docs moved to filing-links)
 project/
   configs/default.yaml      one file describing the experiment
   src/
@@ -530,15 +542,14 @@ project/
     model/                  target, splits, estimators, walkforward
     portfolio/              optimizer, risk, costs
     eval/                   ic, backtest, metrics, report
-    graph/                  filings, passages, extract, resolve, build, signal
   scripts/
-    build_data.py           download and cache; idempotent
+    gate_ic_series.py       cache the per-date IC series the gates read
+    gates.py                validation gates 1-3
     research.py             factor IC table -- the gate
     pit_vs_naive.py         dating signature
     survivorship.py         universe signature
-    benchmark_table.py      extraction frontier, from cache, no GPU
     run_backtest.py         end to end
-  tests/                    126 tests + 1 xfail, offline and deterministic
+  tests/                    7 look-ahead guards, offline and deterministic
 ```
 
 ## Run it
@@ -547,9 +558,8 @@ project/
 pip install -r requirements.txt
 
 cd project
-python -m scripts.build_data --stage universe
-python -m scripts.build_data --stage prices
-python -m scripts.build_data --stage fundamentals   # ~20 min, SEC rate limit
+# data (membership spells, prices, XBRL facts) is downloaded and cached on first use;
+# see docs/DATA.md. The fundamentals fetch takes ~20 min under the SEC rate limit.
 
 python -m scripts.research          # factor ICs, before any trading
 python -m scripts.compare_models    # pick the model on evidence
