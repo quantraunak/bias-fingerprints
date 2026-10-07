@@ -311,12 +311,12 @@ Section~\ref{sec:limits} treats the consequences.
 
 \paragraph{Prices.} Daily adjusted closes, 2010--2026, with a tradability screen on
 price, volume and index membership. Prices come from a free public source that does not
-carry delisted tickers, so 278 of the 990 historical members have no price history and
-are dropped. The point-in-time baseline is therefore itself survivorship-filtered: the
+carry delisted tickers, so 265 of the 990 names that held a membership spell from 2004 on
+have no price history in the current cache and are dropped. The point-in-time baseline is therefore itself survivorship-filtered: the
 universe arm measures the effect of conditioning on current membership \emph{relative to}
-a universe that already lacks most of the names that left by failing, and the
-``727 names, including companies that went bust'' description of the universe holds only
-for names that left by acquisition or demotion. Delisting returns are absent for the same
+a universe that already lacks most of the names that left by failing, and a
+description of the universe as ``including companies that went bust'' holds only for
+names that left by acquisition or demotion. Delisting returns are absent for the same
 reason. Section~\ref{sec:limits} records the consequence.
 
 \paragraph{Fundamentals.} SEC XBRL company facts, keyed on the date each figure was
@@ -338,7 +338,7 @@ code is shared across every arm below, so the standard cannot drift between them
 \label{sec:dating}
 
 A quarter ending 31 March is not public on 31 March. It becomes public when the 10-Q is
-filed, a median of 34 days later. Joining on period end hands the backtest a month of
+filed, a median of 34 days later (from \code{scripts/filing\_lag\_study.py}; the run output is not committed). Joining on period end hands the backtest a month of
 information nobody had.
 
 The generator produces three arms, holding everything else fixed:
@@ -419,7 +419,7 @@ Wrongly \textbf{included}, not yet admitted & \textbf{203} & \textbf{\$28M} & \t
 Wrongly \textbf{excluded}, later deleted & 88 & \$54M & \$5.3B \\
 \bottomrule
 \end{tabular}
-\caption{Daily averages, 2010--2015. The biased panel wrongly includes more than twice as
+\caption{(Figures from an uncommitted run; no script in the repository reproduces this table, so it is reported as recorded and unverified.) Daily averages, 2010--2015. The biased panel wrongly includes more than twice as
 many names as it wrongly excludes, and the added names are roughly a third the size and a
 third the liquidity of a genuine constituent.}
 \label{tab:cohorts}
