@@ -15,7 +15,9 @@ were unaffected but the magnitudes were not comparable. Resampling is a moving
 block bootstrap with block length equal to the horizon, so each draw keeps the
 serial dependence that overlapping returns create.
 
-Each gate is pass/fail on a criterion fixed in the paper before any of this ran.
+Gates 1 and 2 are pass/fail on criteria fixed in the paper before any of this ran.
+Gate 1's half-universe splits were not implemented (time splits only), and Gate 3's
+per-defect scoring was adopted after the pre-specified joint gate failed.
 Gate 1's stated criterion is `amihud_illiquidity` moving sharply positive under
 universe conditioning in every subsample; failing it ends the method.
 

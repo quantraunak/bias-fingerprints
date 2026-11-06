@@ -250,7 +250,7 @@ bias-fingerprinting framework is calibrated on, and it is complete in its own ri
 | Mean IC | **0.0165** (t = 2.00 over 150 out-of-sample months) |
 | IC information ratio | 0.164 monthly · 0.567 annualised |
 | Decile spread | **68.1bp / month** (t = 3.08), signal-level, from `signal.json`; the pooled per-name decile table in `quantile_returns.csv` gives 73.3bp top-minus-bottom. The 43.7bp figure in the beta decomposition below is a third, unverified series |
-| Universe | 990 names held a membership spell from 2004 on; 725 of them have a price history in the cache (prices from 2004) |
+| Universe | 990 names held a membership spell from 2004 on; 727 of them have a price history in the cache (prices from 2004) |
 | Fundamentals | SEC EDGAR XBRL, up to 645 issuers with facts on a given date (`universe_coverage.csv`), keyed on filing date, usable from 2010 |
 
 Two results from auditing it generalise past this study, and both are reported below:
@@ -512,7 +512,7 @@ where an edge in it is likely to be found. The study is built and reported as a
 measurement of how much of a published anomaly stack survives correct construction, which
 is also exactly what a bias-fingerprinting generator needs to be.
 
-**Residual survivorship limitation.** 265 of the 990 historical members have no price
+**Residual survivorship limitation.** 263 of the 990 historical members have no price
 history in the current cache —
 Yahoo drops delisted tickers, and those are precisely the survivorship-relevant names.
 Survivorship bias is *reduced, not eliminated*, and the remainder flatters these

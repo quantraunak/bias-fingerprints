@@ -311,7 +311,7 @@ Section~\ref{sec:limits} treats the consequences.
 
 \paragraph{Prices.} Daily adjusted closes, 2010--2026, with a tradability screen on
 price, volume and index membership. Prices come from a free public source that does not
-carry delisted tickers, so 265 of the 990 names that held a membership spell from 2004 on
+carry delisted tickers, so 263 of the 990 names that held a membership spell from 2004 on
 have no price history in the current cache and are dropped. The point-in-time baseline is therefore itself survivorship-filtered: the
 universe arm measures the effect of conditioning on current membership \emph{relative to}
 a universe that already lacks most of the names that left by failing, and a
@@ -544,7 +544,9 @@ $+2.59$ $t$-units respectively.
 The exclusion restriction was re-checked per subsample rather than only in
 aggregate. The maximum absolute shift on the eleven price-only factors under the
 dating defect is $\num{0.0e+00}$ in each of the four, so exact invariance is a
-property of the construction and not of the full-sample average. Gate 1 passes.
+property of the construction and not of the full-sample average. Gate 1 passes on the
+time splits. The protocol also specified random half-universe splits, which were not
+run; the stability claim rests on time splits alone.
 
 \subsection{Gate 2: the signatures carry error bars}
 
@@ -560,6 +562,11 @@ zero and excludes $\pm 1$ by a wide margin, which is the property the diagnostic
 Gate 2 passes.
 
 \subsection{Gate 3: one signature is identified and one is not}
+
+As specified in Section~\ref{sec:protocol}, Gate 3 was a joint gate whose failure ends
+the method. It failed: dating and survivorship are not jointly separable. Scoring each
+defect separately, as below, is an amendment made after that result, and the per-defect
+verdicts should be read as post hoc.
 
 Gate three simulates studies, applies a defect, adds sampling noise at the level
 this twelve-year window actually carries, and classifies by nearest signature after

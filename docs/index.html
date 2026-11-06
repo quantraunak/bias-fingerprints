@@ -87,11 +87,11 @@ footer{padding-top:28px;border-top:1px solid var(--line);font-family:ui-monospac
   forward-looking growth filter, not a survival filter: the biased panel wrongly includes
   203 names a day that had not yet been admitted, against 88 it wrongly excludes.</p>
   <div class="callout">
-    <b>Status.</b> The framework is specified and both signatures are measured and
-    reproducible. The three validation gates — signature stability, sampling covariance,
-    separability under realistic noise — have not been run, and the diagnostic reports
-    nothing until they have. A label without a calibrated reference distribution is worse
-    than no diagnostic.
+    <b>Status.</b> The three validation gates have been run (<code>project/scripts/gates.py</code>,
+    output in <code>project/reports/gates_1_to_3.txt</code>). Both signatures are stable across
+    time splits (amihud +3.91 ± 0.44 under universe conditioning). Under realistic noise the
+    universe defect is diagnosable (99.2% / 98.5%) and dating is not (63.9% / 29.5%). The
+    pre-specified joint gate failed; per-defect scoring was adopted afterwards.
   </div>
 </section>
 
@@ -128,10 +128,9 @@ footer{padding-top:28px;border-top:1px solid var(--line);font-family:ui-monospac
     <div class="metric"><div class="v">43.7bp</div><div class="l">Raw spread / mo</div><div class="note">t = 2.11</div></div>
     <div class="metric"><div class="v">0.218</div><div class="l">Beta of the spread</div></div>
     <div class="metric"><div class="v">17.7bp</div><div class="l">Beta-adj alpha / mo</div><div class="note">t = 0.92</div></div>
-    <div class="metric"><div class="v">59%</div><div class="l">Of edge from beta</div></div>
   </div>
   <p style="margin-top:22px">The long decile runs a beta of 1.10 against the short decile's
-  0.99, a tilt positive in 73% of months over a window in which the market compounded at
+  0.99, over a window in which the market compounded at
   13.7%. A decile-spread t-statistic reported without its beta decomposition is not a claim
   about stock selection, here or anywhere.</p>
   <p>The second result is dispersion. Across six model seeds with identical economics, IC
