@@ -35,3 +35,5 @@ paper/*.fls
 paper/*.fdb_latexmk
 paper/arxiv/
 paper/*-arxiv.tar.gz
+paper/*.bbl
+paper/*.blg

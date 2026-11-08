@@ -5,7 +5,9 @@ is attributable to construction rather than to the model, because the walk-forwa
 scores are cached and identical across variants.
 
 All figures net of 1bp commission, 5bp slippage, and stock borrow at 40bp on
-short notional.
+short notional. The README's headline portfolio (Sharpe 0.29, CAGR 1.85%) uses the
+same baseline construction without the borrow charge, which is why variant A here
+reads 0.240 and 1.47%: a different cost model, not a different strategy.
 
 | variant | Sharpe | CAGR | vol | max DD | beta | names | turnover | TC |
 |---|---|---|---|---|---|---|---|---|

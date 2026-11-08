@@ -62,6 +62,11 @@ general warning.
 
 ### The bug is decaying
 
+*The era split below, the filing-lag medians and the late-filer percentages come from
+console output of `scripts/pit_vs_naive.py` and `scripts/filing_lag_study.py` runs whose
+output was not committed; `reports/pit_vs_naive.csv` carries only the full-sample
+row. Treat them as unverified until re-run and saved.*
+
 | era | PIT IC | naive IC | inflation | % of true IC |
 |---|---|---|---|---|
 | 2010–2015 | 0.00617 | 0.01212 | +0.00595 | **61%** |
@@ -88,6 +93,11 @@ Download today's 500 constituents, pull their price history, backtest. The
 resulting panel conditions on index membership *as of the end of the sample*.
 
 ### The dominant channel is not the one everyone names
+
+*The cohort table below (names per day, median dollar volume and market cap for genuine,
+wrongly included and wrongly excluded members) has no committed artifact and no script
+in this repository prints it; it is kept as the recorded measurement and marked
+unverified.*
 
 Survivorship is usually described as dropping the losers — the acquired, the
 bankrupt, the demoted. In index research that is the smaller half of the problem.
